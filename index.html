@@ -942,59 +942,7 @@ function Nomina({ employees, periods, setPeriods, savePeriod, showToast, showNew
         <div style={{fontFamily:"Montserrat",fontWeight:700,color:"#003366",marginBottom:14}}>📋 Historial de Nóminas</div>
         {periods.length === 0
           ? <div className="tc tm" style={{padding:"36px 0"}}><div style={{fontSize:38,marginBottom:11}}>📋</div><div>No hay nóminas procesadas aún</div></div>
-          : <div>
-          {/* Vista móvil — cards */}
-          <div className="mobile-emp-list" style={{display:'none'}}>
-            <style>{`@media(max-width:768px){.mobile-emp-list{display:block!important}.desktop-emp-table{display:none!important}}`}</style>
-            {filtered.map((emp,i)=>{
-              const c = calcPayroll(emp,[],[]);
-              return (
-                <div key={emp.id} className="emp-mobile-card" onClick={()=>setEditEmp(emp)}>
-                  <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:8}}>
-                    <div style={{width:44,height:44,borderRadius:'50%',background:'linear-gradient(135deg,#002244,#003D80)',
-                      display:'flex',alignItems:'center',justifyContent:'center',
-                      color:'white',fontWeight:800,fontSize:18,flexShrink:0}}>
-                      {emp.name.charAt(0)}
-                    </div>
-                    <div style={{flex:1,minWidth:0}}>
-                      <div style={{fontWeight:700,color:'#003366',fontSize:14,marginBottom:2,
-                        overflow:'hidden',textOverflow:'ellipsis',whiteSpace:'nowrap'}}>{emp.name}</div>
-                      <div style={{fontSize:12,color:'#5A7090'}}>{emp.position} · {emp.area}</div>
-                    </div>
-                    <div style={{textAlign:'right',flexShrink:0}}>
-                      <div style={{fontWeight:800,color:'#16A34A',fontSize:14}}>{fmt(emp.salary)}</div>
-                      <div style={{fontSize:11,color:'#5A7090'}}>mensual</div>
-                    </div>
-                  </div>
-                  <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:6,fontSize:11}}>
-                    {[
-                      ['💳',emp.cedula],
-                      ['📋',emp.contractType],
-                      ['🏦',emp.bank||'—'],
-                      ['🪪',emp.licenciaNum ? `Lic: ${emp.licenciaNum}` : 'Sin licencia'],
-                    ].map(([ic,v])=>(
-                      <div key={ic} style={{background:'#F8FAFD',borderRadius:7,padding:'5px 8px',color:'#374151'}}>
-                        {ic} {v}
-                      </div>
-                    ))}
-                  </div>
-                  {emp.licenciaVence && (() => {
-                    const days = Math.floor((new Date(emp.licenciaVence+"T12:00:00") - today) / 86400000);
-                    if (days <= 60) return (
-                      <div style={{marginTop:8,background:days<0?'#FEF2F2':'#FFF7ED',
-                        border:`1px solid ${days<0?'#FECACA':'#FED7AA'}`,
-                        borderRadius:7,padding:'5px 8px',fontSize:11,
-                        color:days<0?'#DC2626':'#92400E',fontWeight:600}}>
-                        {days<0?'🚨 Licencia VENCIDA':'⚠️ Licencia vence en '+days+' días'}
-                      </div>
-                    );
-                  })()}
-                </div>
-              );
-            })}
-          </div>
-          {/* Vista escritorio — tabla */}
-          <div className="desktop-emp-table tw"><table><thead><tr><th>Período</th><th>Empleados</th><th>Total Neto</th><th>Costo Empresa</th><th>Procesada</th><th>Acciones</th></tr></thead><tbody>{periods.slice().reverse().map(p => {
+ : <div className="tw"><table><thead><tr><th>Período</th><th>Empleados</th><th>Total Neto</th><th>Costo Empresa</th><th>Procesada</th><th>Acciones</th></tr></thead><tbody>{periods.slice().reverse().map(p => {
               const tn=p.rows.reduce((s,r)=>s+r.calc.totalAPagar,0), tc=p.rows.reduce((s,r)=>s+r.calc.costEmpresa,0);
               return <tr key={p.periodId}><td><span className="badge bb">{p.period?.label}</span> <span className="tm">{p.period?.year}</span></td><td>{p.rows.length}</td><td className="inc tb">{fmt(tn)}</td><td style={{color:"#7C3AED",fontWeight:700}}>{fmt(tc)}</td><td>{fmtDate(p.createdAt)}</td><td style={{display:'flex',gap:6}}>
                   <button className="btn bsm bol" onClick={()=>setSelectedPeriod(p)}>👁 Ver</button>
@@ -2520,6 +2468,7 @@ function Formularios({ employees, periods }) {
         </div>
       </div>
     </div>
+  </div>
   );
 }
 
