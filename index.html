@@ -1187,6 +1187,22 @@ function NoveltyModal({ emp, mode, data, onSave, onClose }) {
               <div className="dec" style={{fontWeight:700,marginTop:3,fontSize:13}}>Valor: {fmt(s.v)}</div>
             </div>
           ))}
+          {/* ISR — solo aparece si aplica */}
+          {calc.isrPeriodo > 0 && (
+            <div className="ni" style={{marginBottom:8,background:"#FEF2F2",border:"1px solid #FECACA"}}>
+              <div className="fjb">
+                <span style={{fontWeight:700,fontSize:13,color:"#DC2626"}}>🔒 ISR — Impuesto sobre la Renta (DGII)</span>
+                <span className="badge bo" style={{fontSize:11}}>En todas las nóminas</span>
+              </div>
+              <div className="dec" style={{fontWeight:700,marginTop:3,fontSize:13}}>Valor: {fmt(calc.isrPeriodo)}</div>
+            </div>
+          )}
+          {/* Cuando no hay ISR — mostrar nota verde de exención */}
+          {calc.isrPeriodo === 0 && (
+            <div style={{background:"#F0FDF4",border:"1px solid #86EFAC",borderRadius:8,padding:"8px 12px",marginBottom:8,fontSize:12,color:"#15803D"}}>
+              ✅ <strong>ISR: Exento</strong> — Salario anual cotizable {fmt(calc.cotizableAnual)} está por debajo del límite de exención RD$416,220.00
+            </div>
+          )}
           <div style={{fontSize:11,fontWeight:700,color:"#5A7090",textTransform:"uppercase",letterSpacing:1,margin:"14px 0 10px"}}>➕ Deducciones Adicionales del Período</div>
         </div>
       )}
@@ -3831,242 +3847,396 @@ function Vacaciones({ employees }) {
 //  CALENDARIO LABORAL — Compliance · TSS 2026 · Feriados
 // ══════════════════════════════════════════════════════════════════════════
 function Calendario() {
-  const [tab, setTab] = useState('compliance');
   const hoy = new Date(); hoy.setHours(12,0,0,0);
-  const diasPara = d => { const x = new Date(d); x.setHours(12,0,0,0); return Math.ceil((x-hoy)/86400000); };
-  const fmtES = d => new Date(d).toLocaleDateString('es-DO',{day:'2-digit',month:'short',year:'numeric'});
+  const todayKey = hoy.toISOString().split('T')[0];
+  const [mesActual, setMesActual] = useState(hoy.getMonth());   // 0-11
+  const [anioActual, setAnioActual] = useState(hoy.getFullYear());
+  const [diaSeleccionado, setDiaSeleccionado] = useState(null); // "YYYY-MM-DD"
+  const [filtro, setFiltro] = useState('all');
 
-  const TSS_2026 = [
-    {mes:'Diciembre 2025',  limite:'2026-01-07'},
-    {mes:'Enero 2026',      limite:'2026-02-04'},
-    {mes:'Febrero 2026',    limite:'2026-03-04'},
-    {mes:'Marzo 2026',      limite:'2026-04-06'},
-    {mes:'Abril 2026',      limite:'2026-05-06'},
-    {mes:'Mayo 2026',       limite:'2026-06-03'},
-    {mes:'Junio 2026',      limite:'2026-07-03'},
-    {mes:'Julio 2026',      limite:'2026-08-05'},
-    {mes:'Agosto 2026',     limite:'2026-09-03'},
-    {mes:'Septiembre 2026', limite:'2026-10-05'},
-    {mes:'Octubre 2026',    limite:'2026-11-04'},
-    {mes:'Noviembre 2026',  limite:'2026-12-03'},
-  ];
+  // ── Todas las obligaciones del año ────────────────────────────────────────
+  const TSS_FECHAS = {
+    '2026-01-07':'Diciembre 2025','2026-02-04':'Enero 2026',
+    '2026-03-04':'Febrero 2026','2026-04-06':'Marzo 2026',
+    '2026-05-06':'Abril 2026','2026-06-03':'Mayo 2026',
+    '2026-07-03':'Junio 2026','2026-08-05':'Julio 2026',
+    '2026-09-03':'Agosto 2026','2026-10-05':'Septiembre 2026',
+    '2026-11-04':'Octubre 2026','2026-12-03':'Noviembre 2026',
+  };
 
-  function buildCompliance() {
-    const y=2026; const items=[];
-    const add = (fecha,titulo,subtitulo,tipo,recurrente) =>
-      items.push({fecha,titulo,subtitulo,tipo,recurrente,diff:diasPara(fecha)});
+  const FERIADOS_2026 = {
+    '2026-01-01':'Año Nuevo',
+    '2026-01-05':'Día de Reyes Magos (traslado)',
+    '2026-01-21':'Ntra. Sra. de la Altagracia',
+    '2026-01-26':'Juan Pablo Duarte',
+    '2026-02-27':'Día de la Independencia',
+    '2026-04-03':'Viernes Santo',
+    '2026-05-04':'Día del Trabajo (traslado)',
+    '2026-06-04':'Corpus Christi',
+    '2026-08-16':'Día de la Restauración',
+    '2026-09-24':'Ntra. Sra. de las Mercedes',
+    '2026-11-09':'Día de la Constitución (traslado)',
+    '2026-12-25':'Navidad',
+  };
 
-    // ── Ministerio de Trabajo ──
-    add(`${y}-01-15`,'Cartel de Vacaciones','Publicar calendario vacaciones en instalaciones (Art. 186 CT)','dgt','Anual');
-    add(`${y}-01-31`,'DGT-3 — Planilla Personal Fijo','Renovación anual (prorrogado) — portal ovi.mt.gob.do','dgt','Anual');
-    for(let m=1;m<=12;m++){
-      const mm=String(m).padStart(2,'0');
-      add(`${y}-${mm}-05`,'DGT-4 — Cambios Personal Fijo','Incorporaciones, salidas y aumentos del mes anterior','dgt','Mensual');
-      add(`${y}-${mm}-10`,'DGT-2 — Horas Extraordinarias','Reporte horas extras del mes anterior — Min. Trabajo','dgt','Mensual');
+  const TIPOS = {
+    tss:    { color:'#7C3AED', bg:'#F5F3FF', label:'TSS',          icon:'🏦' },
+    isr:    { color:'#DC2626', bg:'#FEF2F2', label:'DGII · ISR',   icon:'📋' },
+    dgii:   { color:'#0369A1', bg:'#EFF6FF', label:'DGII · 606-609',icon:'📊' },
+    itbis:  { color:'#B45309', bg:'#FFFBEB', label:'DGII · IT-1',  icon:'🧾' },
+    dgt:    { color:'#003366', bg:'#F0F4FA', label:'Min. Trabajo',  icon:'📂' },
+    nomina: { color:'#16A34A', bg:'#F0FDF4', label:'Nómina',        icon:'💵' },
+    bonif:  { color:'#92400E', bg:'#FFF7ED', label:'Bonificación',  icon:'🏆' },
+    navidad:{ color:'#065F46', bg:'#ECFDF5', label:'Navidad',       icon:'🎄' },
+    feriado:{ color:'#9CA3AF', bg:'#F9FAFB', label:'Feriado',       icon:'🎌' },
+  };
+
+  // Construir mapa fecha → [eventos]
+  const eventosMap = useMemo(() => {
+    const m = {};
+    const add = (fecha, titulo, detalle, tipo) => {
+      if (!m[fecha]) m[fecha] = [];
+      m[fecha].push({ titulo, detalle, tipo });
+    };
+    const y = 2026;
+
+    // TSS fechas exactas
+    Object.entries(TSS_FECHAS).forEach(([f, mes]) =>
+      add(f, 'TSS — AFP + SFS + SRL + INFOTEP', `Aportes correspondientes a ${mes} · Sin recargo · Portal SUIR tss.gov.do`, 'tss')
+    );
+
+    for (let mo = 1; mo <= 12; mo++) {
+      const mm = String(mo).padStart(2,'0');
+      const ult = new Date(y, mo, 0).getDate();
+
+      // Min. Trabajo
+      add(`${y}-${mm}-05`, 'DGT-4 — Cambios Personal Fijo', 'Incorporaciones, salidas y aumentos del mes anterior · portal ovi.mt.gob.do', 'dgt');
+      add(`${y}-${mm}-10`, 'DGT-2 — Horas Extraordinarias', 'Reporte horas extras del mes anterior · Ministerio de Trabajo', 'dgt');
+
+      // DGII día 10
+      add(`${y}-${mm}-10`, 'IR-3 — Retenciones a Asalariados', 'Declaración de retenciones ISR a empleados del mes anterior · Oficina Virtual DGII', 'isr');
+      add(`${y}-${mm}-10`, 'IR-17 — Retenciones y Retribuciones', 'Otras retenciones y retribuciones complementarias · Oficina Virtual DGII', 'isr');
+
+      // DGII día 15
+      add(`${y}-${mm}-15`, 'Formato 606 — Compras y Gastos', 'Reporte mensual de compras con RNC, NCF e ITBIS · Oficina Virtual DGII', 'dgii');
+      add(`${y}-${mm}-15`, 'Formato 607 — Ventas', 'Reporte mensual de ventas con NCF y retenciones · Oficina Virtual DGII', 'dgii');
+      add(`${y}-${mm}-15`, 'Formato 608 — Anulaciones', 'Comprobantes fiscales anulados del período · Oficina Virtual DGII', 'dgii');
+      add(`${y}-${mm}-15`, 'Formato 609 — Pagos al Exterior', 'Pagos a proveedores del exterior sin NCF · Oficina Virtual DGII', 'dgii');
+
+      // DGII día 20
+      add(`${y}-${mm}-20`, 'IT-1 — ITBIS Mensual', 'Impuesto sobre Transferencia de Bienes Industrializados y Servicios · Oficina Virtual DGII', 'itbis');
+
+      // Nómina quincenal
+      add(`${y}-${mm}-10`, '💵 Pago Nómina — 1ra Quincena', 'Pago a empleados correspondiente al 1 al 15 del mes', 'nomina');
+      add(`${y}-${mm}-${String(Math.min(25, ult)).padStart(2,'0')}`, '💵 Pago Nómina — 2da Quincena', 'Pago a empleados correspondiente al 16 al fin del mes', 'nomina');
     }
-    // ── TSS con fechas exactas publicadas ──
-    TSS_2026.forEach(t=>add(t.limite,'TSS — AFP + SFS + SRL + INFOTEP',`Aportes ${t.mes} sin recargo · SUIR de la TSS`,'tss','Mensual'));
-    // ── DGII día 10: IR-3 e IR-17 ──
-    for(let m=1;m<=12;m++){
-      const mm=String(m).padStart(2,'0');
-      add(`${y}-${mm}-10`,'IR-3 — Retenciones Asalariados','Declaración retenciones ISR empleados — DGII','isr','Mensual');
-      add(`${y}-${mm}-10`,'IR-17 — Retenciones y Retribuciones','Otras retenciones y retribuciones complementarias — DGII','isr','Mensual');
-    }
-    // ── DGII día 15: Formatos 606/607/608/609 ──
-    for(let m=1;m<=12;m++){
-      const mm=String(m).padStart(2,'0');
-      add(`${y}-${mm}-15`,'Formato 606 — Compras','Reporte compras con RNC, NCF, ITBIS — DGII','dgii','Mensual');
-      add(`${y}-${mm}-15`,'Formato 607 — Ventas','Reporte ventas con NCF y retenciones — DGII','dgii','Mensual');
-      add(`${y}-${mm}-15`,'Formato 608 — Anulaciones','Comprobantes anulados del período — DGII','dgii','Mensual');
-      add(`${y}-${mm}-15`,'Formato 609 — Pagos Exterior','Pagos a proveedores del exterior — DGII','dgii','Mensual');
-    }
-    // ── DGII día 20: IT-1 ITBIS ──
-    for(let m=1;m<=12;m++){
-      const mm=String(m).padStart(2,'0');
-      add(`${y}-${mm}-20`,'IT-1 — ITBIS Mensual','Impuesto Transferencia Bienes y Servicios — DGII (día 20)','itbis','Mensual');
-    }
-    // ── Nómina quincenal ──
-    for(let m=1;m<=12;m++){
-      const mm=String(m).padStart(2,'0');
-      const ult=new Date(y,m,0).getDate();
-      add(`${y}-${mm}-10`,'Pago Nómina — 1ra Quincena','Pago quincenal empleados','nomina','Quincenal');
-      add(`${y}-${mm}-${Math.min(25,ult)}`,'Pago Nómina — 2da Quincena','Pago quincenal empleados','nomina','Quincenal');
-    }
-    // ── Anuales ──
-    add(`${y}-03-31`,'IR-1 — ISR Personas Físicas','Declaración jurada anual personas físicas — DGII (31 marzo)','isr','Anual');
-    add(`${y}-04-30`,'IR-2 — ISR Sociedades','Declaración jurada anual personas jurídicas — DGII (120 días)','isr','Anual');
-    add(`${y}-04-30`,'ACT — Activos Imponibles','Declaración activos imponibles — DGII (120 días cierre dic)','isr','Anual');
-    add(`${y}-04-30`,'Bonificación Anual','10% utilidades netas (Art. 223 CT) — plazo 30 abril','bonif','Anual');
-    add(`${y}-05-15`,'⚡ e-CF — Facturación Electrónica','Obligatorio para todos los contribuyentes (Ley 32-23) — registrarse en DGII antes del 15 mayo','ecf','Único');
-    add(`${y}-11-30`,'Navidad — 1er Pago (50%)','Primer 50% de la regalía pascual (Art. 219 CT)','navidad','Anual');
-    add(`${y}-12-20`,'Navidad — 2do Pago (50%)','Segundo 50% regalía pascual — plazo final 20 dic','navidad','Anual');
-    return items.filter(i=>i.diff>=-3).sort((a,b)=>a.diff-b.diff);
-  }
 
-  const TIPO_COLOR={tss:'#6B21A8',isr:'#DC2626',dgii:'#0369A1',dgt:'#003366',nomina:'#1A6B3A',bonif:'#7B4F00',navidad:'#065F46',itbis:'#B45309',ecf:'#7C3AED'};
-  const TIPO_ICON ={tss:'🏦',isr:'📋',dgii:'📊',dgt:'📋',nomina:'💵',bonif:'🏆',navidad:'🎄',itbis:'🧾',ecf:'⚡'};
-  const TIPO_LABEL={tss:'TSS',isr:'DGII-ISR',dgii:'DGII',dgt:'Min. Trabajo',nomina:'Nómina',bonif:'Bonificación',navidad:'Navidad',itbis:'ITBIS',ecf:'e-CF'};
+    // Anuales
+    add(`${y}-01-15`, 'Cartel de Vacaciones', 'Publicar calendario de vacaciones en instalaciones (Art. 186 CT)', 'dgt');
+    add(`${y}-01-31`, 'DGT-3 — Planilla Personal Fijo', 'Renovación anual planilla personal fijo · portal ovi.mt.gob.do', 'dgt');
+    add(`${y}-03-31`, 'IR-1 — ISR Personas Físicas', 'Declaración jurada anual personas físicas · 31 de marzo · Oficina Virtual DGII', 'isr');
+    add(`${y}-04-30`, 'IR-2 — ISR Personas Jurídicas (Sociedades)', 'Declaración jurada anual sociedades · 120 días del cierre fiscal · Oficina Virtual DGII', 'isr');
+    add(`${y}-04-30`, 'ACT — Activos Imponibles', 'Declaración de activos imponibles · DGII · 120 días del cierre fiscal diciembre', 'isr');
+    add(`${y}-04-30`, 'Bonificación Anual — Pago Obligatorio', '10% de las utilidades netas (Art. 223 CT) · Plazo: 30 de abril', 'bonif');
+    add(`${y}-11-30`, 'Regalía Pascual — 1er Pago (50%)', 'Primer 50% del salario de Navidad · Art. 219 CT · Antes del 30 de noviembre', 'navidad');
+    add(`${y}-12-20`, 'Regalía Pascual — 2do Pago (50%)', 'Segundo 50% del salario de Navidad · Plazo final 20 de diciembre', 'navidad');
 
-  const compliance = buildCompliance();
-  const [filtroTipo, setFiltroTipo] = useState('all');
-  const visible = compliance.filter(i=>i.diff<=90);
-  const visibleF = filtroTipo==='all' ? visible : visible.filter(i=>i.tipo===filtroTipo);
-  const nextTSS = TSS_2026.find(t=>diasPara(t.limite)>=0);
+    // Feriados
+    Object.entries(FERIADOS_2026).forEach(([f, n]) =>
+      add(f, `🎌 Feriado — ${n}`, 'Día no laborable · Trabajar genera derecho a doble salario (Art. 203 CT)', 'feriado')
+    );
 
-  function CountdownBadge({diff}) {
-    const bg = diff<0?'#DC2626':diff<=2?'#DC2626':diff<=7?'#F97316':diff<=14?'#CA8A04':'#16A34A';
-    return <span style={{background:bg,color:'white',borderRadius:20,padding:'3px 10px',fontSize:11,fontWeight:800,whiteSpace:'nowrap'}}>
-      {diff<0?`Venció hace ${Math.abs(diff)}d`:diff===0?'¡HOY!': `${diff} días`}
-    </span>;
-  }
+    return m;
+  }, []);
 
-  const FERIADOS_2026=[
-    {f:'Jue 1 Ene', n:'Año Nuevo',                  nota:'Inamovible'},
-    {f:'Lun 5 Ene', n:'Día de los Reyes Magos',     nota:'Cambiado desde mar 6'},
-    {f:'Mié 21 Ene',n:'Ntra. Sra. de la Altagracia',nota:'Inamovible'},
-    {f:'Lun 26 Ene',n:'Juan Pablo Duarte',           nota:'Inamovible'},
-    {f:'Vie 27 Feb',n:'Día de la Independencia',     nota:'Inamovible'},
-    {f:'Vie 3 Abr', n:'Viernes Santo',               nota:'Inamovible'},
-    {f:'Lun 4 May', n:'Día del Trabajo',             nota:'Cambiado desde vie 1'},
-    {f:'Jue 4 Jun', n:'Corpus Christi',              nota:''},
-    {f:'Dom 16 Ago',n:'Día de la Restauración',      nota:'Inamovible'},
-    {f:'Jue 24 Sep',n:'Ntra. Sra. de las Mercedes',  nota:''},
-    {f:'Lun 9 Nov', n:'Día de la Constitución',      nota:'Cambiado desde vie 6'},
-    {f:'Vie 25 Dic',n:'Navidad',                     nota:'Inamovible'},
-  ];
+  // ── Helpers de calendario ─────────────────────────────────────────────────
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const DIAS_SEMANA = ['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'];
+
+  const diasDelMes = (mes, anio) => {
+    const primero = new Date(anio, mes, 1).getDay(); // 0=Dom
+    const total   = new Date(anio, mes + 1, 0).getDate();
+    const celdas  = [];
+    for (let i = 0; i < primero; i++) celdas.push(null);
+    for (let d = 1; d <= total; d++) celdas.push(d);
+    return celdas;
+  };
+
+  const fmtKey = (d) => {
+    const mm = String(mesActual + 1).padStart(2,'0');
+    const dd = String(d).padStart(2,'0');
+    return `${anioActual}-${mm}-${dd}`;
+  };
+
+  const navMes = (dir) => {
+    let m = mesActual + dir, a = anioActual;
+    if (m < 0)  { m = 11; a--; }
+    if (m > 11) { m = 0;  a++; }
+    setMesActual(m); setAnioActual(a); setDiaSeleccionado(null);
+  };
+
+  const celdas = diasDelMes(mesActual, anioActual);
+
+  // Eventos del día seleccionado filtrados
+  const eventosHoy = diaSeleccionado
+    ? (eventosMap[diaSeleccionado] || []).filter(e => filtro === 'all' || e.tipo === filtro)
+    : [];
+
+  // Tipos presentes en el mes actual para los filtros
+  const tiposEnMes = useMemo(() => {
+    const tipos = new Set();
+    for (let d = 1; d <= new Date(anioActual, mesActual+1, 0).getDate(); d++) {
+      const key = fmtKey(d);
+      (eventosMap[key] || []).forEach(e => tipos.add(e.tipo));
+    }
+    return tipos;
+  }, [mesActual, anioActual]);
+
+  // Conteo de eventos en el mes para el resumen
+  const resumenMes = useMemo(() => {
+    const cnt = {};
+    for (let d = 1; d <= new Date(anioActual, mesActual+1, 0).getDate(); d++) {
+      (eventosMap[fmtKey(d)] || []).forEach(e => { cnt[e.tipo] = (cnt[e.tipo]||0)+1; });
+    }
+    return cnt;
+  }, [mesActual, anioActual]);
+
+  // Próximas obligaciones (no feriados, no nomina) en los próximos 30 días
+  const proximas = useMemo(() => {
+    const lista = [];
+    const limite = new Date(hoy); limite.setDate(limite.getDate() + 30);
+    Object.entries(eventosMap).forEach(([f, evs]) => {
+      const d = new Date(f + 'T12:00:00');
+      if (d >= hoy && d <= limite) {
+        evs.filter(e => !['feriado','nomina'].includes(e.tipo)).forEach(e => {
+          const diff = Math.ceil((d - hoy) / 86400000);
+          lista.push({ ...e, fecha: f, diff });
+        });
+      }
+    });
+    return lista.sort((a,b) => a.diff - b.diff);
+  }, []);
 
   return (
-    <div style={{maxWidth:980,margin:'0 auto',padding:24}}>
-      <h2 style={{fontFamily:'Montserrat',color:'#003366',marginBottom:4}}>📅 Calendario Laboral 2026</h2>
-      <p style={{fontSize:13,color:'#5A7090',marginBottom:20}}>TSS, DGII (IR-3, IR-17, IT-1, 606-609), Ministerio de Trabajo y Facturación Electrónica (e-CF Ley 32-23)</p>
-
-      <div style={{display:'flex',gap:8,marginBottom:20}}>
-        {[['compliance','⏰ Compliance & Pagos'],['tss','🏦 TSS 2026'],['feriados','📆 Feriados']].map(([v,l])=>(
-          <button key={v} onClick={()=>setTab(v)} style={{padding:'9px 18px',borderRadius:10,border:'none',cursor:'pointer',fontWeight:700,fontSize:13,background:tab===v?'#003366':'#F0F4FA',color:tab===v?'white':'#5A7090'}}>{l}</button>
-        ))}
+    <div style={{maxWidth:1020,margin:'0 auto'}}>
+      <div className="fjb mb3">
+        <div>
+          <div className="pt">📅 Calendario Laboral 2026</div>
+          <div className="ps">TSS · DGII (IR-3, IR-17, IT-1, 606-609) · Ministerio de Trabajo · Nómina</div>
+        </div>
       </div>
 
-      {tab==='compliance' && (<>
-        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:16}}>
-          {[['🔴 Vencidos/Hoy',visible.filter(i=>i.diff<=0).length,'#DC2626'],
-            ['🟠 Esta semana',visible.filter(i=>i.diff>0&&i.diff<=7).length,'#F97316'],
-            ['🟡 Este mes',visible.filter(i=>i.diff>7&&i.diff<=30).length,'#CA8A04'],
-            ['🟢 Próx. 90 días',visible.filter(i=>i.diff>30&&i.diff<=90).length,'#16A34A'],
-          ].map(([l,v,c])=>(
-            <div key={l} className="card" style={{textAlign:'center',padding:'12px 8px'}}>
-              <div style={{fontSize:11,color:'#5A7090',marginBottom:4}}>{l}</div>
-              <div style={{fontSize:22,fontWeight:800,color:c}}>{v}</div>
-            </div>
-          ))}
+      {/* ── Alertas próximos 7 días ── */}
+      {proximas.filter(e => e.diff <= 7).length > 0 && (
+        <div style={{background:'#FFF7ED',border:'2px solid #FED7AA',borderRadius:12,padding:'12px 16px',marginBottom:16}}>
+          <div style={{fontWeight:800,color:'#92400E',marginBottom:8,fontSize:13}}>⚠️ Próximas obligaciones — los próximos 7 días</div>
+          <div style={{display:'flex',flexDirection:'column',gap:6}}>
+            {proximas.filter(e => e.diff <= 7).map((e,i) => (
+              <div key={i} style={{display:'flex',gap:10,alignItems:'center'}}>
+                <span style={{fontSize:16}}>{TIPOS[e.tipo]?.icon}</span>
+                <span style={{fontWeight:700,fontSize:13,color:TIPOS[e.tipo]?.color}}>{e.titulo}</span>
+                <span style={{fontSize:12,color:'#5A7090'}}>·</span>
+                <span style={{fontSize:12,color:'#5A7090'}}>{new Date(e.fecha+'T12:00:00').toLocaleDateString('es-DO',{day:'2-digit',month:'short'})}</span>
+                <span style={{background:e.diff===0?'#DC2626':e.diff<=3?'#F97316':'#CA8A04',color:'white',borderRadius:20,padding:'2px 8px',fontSize:11,fontWeight:800,marginLeft:'auto'}}>
+                  {e.diff===0?'¡HOY!':e.diff===1?'Mañana':`${e.diff} días`}
+                </span>
+              </div>
+            ))}
+          </div>
         </div>
-        {/* e-CF Facturación Electrónica alert */}
-        {(() => {const ecfDiff=diasPara('2026-05-15'); return ecfDiff>=0 && ecfDiff<=90 && (
-          <div style={{background:'#F5F3FF',border:'2px solid #7C3AED',borderRadius:12,
-            padding:'13px 16px',marginBottom:14,display:'flex',gap:12,alignItems:'center'}}>
-            <div style={{fontSize:24}}>⚡</div>
-            <div style={{flex:1}}>
-              <div style={{fontWeight:800,color:'#7C3AED',fontSize:13,marginBottom:2}}>
-                Facturación Electrónica (e-CF) — Obligatorio antes del 15 de mayo 2026
+      )}
+
+      <div style={{display:'flex',gap:16,alignItems:'flex-start',flexWrap:'wrap'}}>
+        {/* ── Columna izquierda: Calendario ── */}
+        <div style={{flex:'1 1 600px',minWidth:320}}>
+          {/* Navegación de mes */}
+          <div className="card" style={{padding:'14px 18px',marginBottom:12}}>
+            <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',marginBottom:14}}>
+              <button onClick={()=>navMes(-1)} style={{background:'#F0F4FA',border:'none',borderRadius:8,padding:'6px 14px',cursor:'pointer',fontWeight:800,fontSize:16,color:'#003366'}}>‹</button>
+              <div style={{textAlign:'center'}}>
+                <div style={{fontFamily:'Montserrat',fontWeight:800,fontSize:20,color:'#003366'}}>{MESES[mesActual]}</div>
+                <div style={{fontSize:13,color:'#5A7090'}}>{anioActual}</div>
               </div>
-              <div style={{fontSize:12,color:'#5B21B6',lineHeight:1.6}}>
-                Ley 32-23: todos los contribuyentes deben implementar comprobantes fiscales electrónicos. Regístrate en la DGII, obtén certificado digital y usa software autorizado.
-              </div>
+              <button onClick={()=>navMes(1)} style={{background:'#F0F4FA',border:'none',borderRadius:8,padding:'6px 14px',cursor:'pointer',fontWeight:800,fontSize:16,color:'#003366'}}>›</button>
             </div>
-            <div style={{textAlign:'right',flexShrink:0}}>
-              <div style={{fontSize:11,color:'#8090A0',marginBottom:4}}>15 mayo 2026</div>
-              <span style={{background:'#7C3AED',color:'white',borderRadius:20,padding:'3px 10px',fontSize:11,fontWeight:800}}>{ecfDiff} días</span>
+
+            {/* Filtros de tipo */}
+            <div style={{display:'flex',gap:4,flexWrap:'wrap',marginBottom:14}}>
+              <button onClick={()=>setFiltro('all')} style={{padding:'3px 10px',borderRadius:20,border:'none',cursor:'pointer',fontSize:11,fontWeight:700,background:filtro==='all'?'#003366':'#F0F4FA',color:filtro==='all'?'white':'#5A7090'}}>Todos</button>
+              {Object.entries(TIPOS).filter(([t]) => tiposEnMes.has(t) && t!=='feriado').map(([t,info]) => (
+                <button key={t} onClick={()=>setFiltro(t)} style={{padding:'3px 10px',borderRadius:20,border:'none',cursor:'pointer',fontSize:11,fontWeight:700,background:filtro===t?info.color:'#F0F4FA',color:filtro===t?'white':'#5A7090'}}>
+                  {info.icon} {info.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Grid días semana */}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2,marginBottom:4}}>
+              {DIAS_SEMANA.map(d => (
+                <div key={d} style={{textAlign:'center',fontSize:11,fontWeight:700,color:'#8090A0',padding:'4px 0'}}>{d}</div>
+              ))}
+            </div>
+
+            {/* Grid días */}
+            <div style={{display:'grid',gridTemplateColumns:'repeat(7,1fr)',gap:2}}>
+              {celdas.map((dia, idx) => {
+                if (!dia) return <div key={idx} />;
+                const key = fmtKey(dia);
+                const evs = (eventosMap[key] || []).filter(e => filtro === 'all' || e.tipo === filtro);
+                const esFeriado = !!(eventosMap[key]||[]).find(e=>e.tipo==='feriado');
+                const esHoy = key === todayKey;
+                const seleccionado = key === diaSeleccionado;
+                const tiposUnicos = [...new Set(evs.filter(e=>e.tipo!=='feriado').map(e=>e.tipo))];
+                return (
+                  <div key={idx} onClick={() => setDiaSeleccionado(key === diaSeleccionado ? null : key)}
+                    style={{
+                      borderRadius:8, padding:'5px 3px', cursor: evs.length ? 'pointer' : 'default',
+                      background: seleccionado ? '#003366' : esHoy ? '#EBF4FF' : esFeriado ? '#FFF9F9' : 'white',
+                      border: seleccionado ? '2px solid #003366' : esHoy ? '2px solid #60A5FA' : '1px solid #EEF3FA',
+                      minHeight:52, position:'relative',
+                      transition:'all .15s',
+                    }}>
+                    <div style={{textAlign:'center',fontWeight:esHoy||seleccionado?800:500,fontSize:13,
+                      color:seleccionado?'white':esHoy?'#1D4ED8':esFeriado?'#DC2626':'#1A2A3A',
+                      marginBottom:3}}>
+                      {dia}
+                    </div>
+                    {/* Dots de tipos */}
+                    <div style={{display:'flex',flexWrap:'wrap',gap:2,justifyContent:'center',paddingBottom:2}}>
+                      {tiposUnicos.slice(0,4).map((t,i) => (
+                        <span key={i} style={{width:7,height:7,borderRadius:'50%',background:TIPOS[t]?.color||'#999',display:'inline-block',
+                          boxShadow: seleccionado?'0 0 0 1px white':undefined}} title={TIPOS[t]?.label} />
+                      ))}
+                      {tiposUnicos.length > 4 && <span style={{fontSize:9,color:seleccionado?'white':'#5A7090'}}>+{tiposUnicos.length-4}</span>}
+                    </div>
+                    {esFeriado && !seleccionado && (
+                      <div style={{position:'absolute',top:2,right:3,fontSize:9}}>🎌</div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Leyenda */}
+            <div style={{display:'flex',gap:10,flexWrap:'wrap',marginTop:12,paddingTop:10,borderTop:'1px solid #EEF3FA'}}>
+              {Object.entries(TIPOS).filter(([t]) => tiposEnMes.has(t)).map(([t,info]) => (
+                <div key={t} style={{display:'flex',alignItems:'center',gap:4,fontSize:11,color:'#5A7090'}}>
+                  <span style={{width:9,height:9,borderRadius:'50%',background:info.color,display:'inline-block'}}/>
+                  {info.label}
+                </div>
+              ))}
             </div>
           </div>
-        );})()}
-        <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:16}}>
-          <button onClick={()=>setFiltroTipo('all')} style={{padding:'5px 12px',borderRadius:20,border:'none',cursor:'pointer',fontSize:12,fontWeight:700,background:filtroTipo==='all'?'#003366':'#F0F4FA',color:filtroTipo==='all'?'white':'#5A7090'}}>Todos</button>
-          {Object.entries(TIPO_LABEL).map(([t,l])=>(
-            <button key={t} onClick={()=>setFiltroTipo(t)} style={{padding:'5px 12px',borderRadius:20,border:'none',cursor:'pointer',fontSize:12,fontWeight:700,background:filtroTipo===t?TIPO_COLOR[t]:'#F0F4FA',color:filtroTipo===t?'white':'#5A7090'}}>
-              {TIPO_ICON[t]} {l}
-            </button>
-          ))}
         </div>
-        <div style={{display:'flex',flexDirection:'column',gap:8}}>
-          {visibleF.map((item,i)=>{
-            const c=TIPO_COLOR[item.tipo]||'#374151';
-            const overdue=item.diff<0; const hot=item.diff>=0&&item.diff<=7;
-            return (
-              <div key={i} style={{background:overdue?'#FEF2F2':hot?'#FFF7ED':'white',border:`1.5px solid ${overdue?'#FECACA':hot?'#FED7AA':'#E8EEF8'}`,borderLeft:`4px solid ${c}`,borderRadius:10,padding:'11px 14px',display:'flex',gap:12,alignItems:'center'}}>
-                <div style={{fontSize:20,flexShrink:0}}>{TIPO_ICON[item.tipo]||'📅'}</div>
-                <div style={{flex:1,minWidth:0}}>
-                  <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:2}}>
-                    <span style={{fontWeight:800,color:c,fontSize:13}}>{item.titulo}</span>
-                    <span style={{background:c+'18',color:c,borderRadius:20,padding:'2px 7px',fontSize:10,fontWeight:700}}>{item.recurrente}</span>
-                  </div>
-                  <div style={{fontSize:12,color:'#5A7090'}}>{item.subtitulo}</div>
-                </div>
-                <div style={{textAlign:'right',flexShrink:0}}>
-                  <div style={{fontSize:11,color:'#8090A0',marginBottom:4}}>{fmtES(item.fecha)}</div>
-                  <CountdownBadge diff={item.diff}/>
-                </div>
-              </div>
-            );
-          })}
-        </div>
-      </>)}
 
-      {tab==='tss' && (<>
-        <div style={{background:'#F5F3FF',border:'1.5px solid #A78BFA',borderRadius:12,padding:'14px 18px',marginBottom:16}}>
-          <div style={{fontWeight:800,color:'#6B21A8',marginBottom:4,fontSize:14}}>🏦 Calendario TSS 2026 — Fechas Oficiales (sin recargo)</div>
-          <div style={{fontSize:13,color:'#5B21B6',lineHeight:1.7}}>AFP: empleado 2.87% + empleador 7.10% · SFS: empleado 3.04% + empleador 7.09% · SRL: empleador 1.20% · INFOTEP: empleador 1%</div>
-          {nextTSS && (
-            <div style={{marginTop:10,background:'white',borderRadius:8,padding:'10px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
-              <span style={{fontWeight:700,color:'#6B21A8'}}>Próximo: {nextTSS.mes}</span>
-              <div style={{display:'flex',gap:10,alignItems:'center'}}>
-                <span style={{color:'#5A7090',fontSize:13}}>{fmtES(nextTSS.limite)}</span>
-                <CountdownBadge diff={diasPara(nextTSS.limite)}/>
+        {/* ── Columna derecha: Detalle día + resumen ── */}
+        <div style={{flex:'0 0 300px',minWidth:280,display:'flex',flexDirection:'column',gap:12}}>
+
+          {/* Panel detalle del día seleccionado */}
+          {diaSeleccionado ? (
+            <div className="card" style={{padding:'14px 16px'}}>
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',marginBottom:12}}>
+                <div>
+                  <div style={{fontFamily:'Montserrat',fontWeight:800,color:'#003366',fontSize:16}}>
+                    {new Date(diaSeleccionado+'T12:00:00').toLocaleDateString('es-DO',{weekday:'long',day:'numeric',month:'long'})}
+                  </div>
+                  <div style={{fontSize:12,color:'#5A7090'}}>{eventosHoy.length > 0 ? `${eventosHoy.length} obligación(es)` : 'Sin obligaciones'}</div>
+                </div>
+                <button onClick={()=>setDiaSeleccionado(null)} style={{background:'#F0F4FA',border:'none',borderRadius:8,padding:'5px 10px',cursor:'pointer',fontWeight:800,color:'#5A7090',fontSize:14}}>✕</button>
               </div>
+              {eventosHoy.length === 0
+                ? <div style={{textAlign:'center',color:'#9CA3AF',fontSize:13,padding:'20px 0'}}>
+                    ✅ Sin obligaciones este día
+                    {filtro !== 'all' && <div style={{fontSize:11,marginTop:4}}>Prueba filtro "Todos"</div>}
+                  </div>
+                : <div style={{display:'flex',flexDirection:'column',gap:8}}>
+                    {eventosHoy.map((e,i) => {
+                      const info = TIPOS[e.tipo] || {color:'#374151',bg:'#F9FAFB',icon:'📅'};
+                      return (
+                        <div key={i} style={{background:info.bg,border:`1.5px solid ${info.color}30`,borderLeft:`4px solid ${info.color}`,borderRadius:8,padding:'10px 12px'}}>
+                          <div style={{display:'flex',gap:6,alignItems:'center',marginBottom:4}}>
+                            <span style={{fontSize:15}}>{info.icon}</span>
+                            <span style={{fontWeight:700,fontSize:13,color:info.color}}>{e.titulo}</span>
+                          </div>
+                          <div style={{fontSize:12,color:'#5A7090',lineHeight:1.5}}>{e.detalle}</div>
+                          <div style={{marginTop:6}}>
+                            <span style={{background:info.color+'20',color:info.color,borderRadius:20,padding:'2px 8px',fontSize:10,fontWeight:700}}>{info.label}</span>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+              }
+            </div>
+          ) : (
+            <div className="card" style={{padding:'14px 16px',textAlign:'center',color:'#9CA3AF'}}>
+              <div style={{fontSize:32,marginBottom:8}}>📅</div>
+              <div style={{fontSize:13,fontWeight:600}}>Haz clic en un día</div>
+              <div style={{fontSize:11,marginTop:4}}>para ver sus obligaciones</div>
             </div>
           )}
-        </div>
-        <div className="card" style={{padding:0,overflow:'hidden'}}>
-          <table style={{width:'100%',borderCollapse:'collapse'}}>
-            <thead><tr style={{background:'#6B21A8',color:'white'}}>
-              <th style={{padding:'10px 16px',textAlign:'left',fontSize:12}}>Mes de Contribución</th>
-              <th style={{padding:'10px 16px',textAlign:'center',fontSize:12}}>Fecha Límite sin Recargo</th>
-              <th style={{padding:'10px 16px',textAlign:'center',fontSize:12}}>Estado</th>
-            </tr></thead>
-            <tbody>
-              {TSS_2026.map((t,i)=>{
-                const diff=diasPara(t.limite); const pasado=diff<-3;
-                return (<tr key={i} style={{background:pasado?'#FAFAFA':i%2===0?'white':'#F8F5FF',borderBottom:'1px solid #EDE9FE',opacity:pasado?0.55:1}}>
-                  <td style={{padding:'11px 16px',fontWeight:600,fontSize:13,color:'#1A2D4A'}}>{t.mes}</td>
-                  <td style={{padding:'11px 16px',textAlign:'center',fontSize:13,color:'#5A7090'}}>{fmtES(t.limite)}</td>
-                  <td style={{padding:'11px 16px',textAlign:'center'}}>{pasado?<span style={{color:'#9CA3AF',fontSize:12}}>✓ Completado</span>:<CountdownBadge diff={diff}/>}</td>
-                </tr>);
-              })}
-            </tbody>
-          </table>
-        </div>
-      </>)}
 
-      {tab==='feriados' && (<>
-        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:16}}>
-          {FERIADOS_2026.map((f,i)=>(
-            <div key={i} style={{background:'white',border:'1.5px solid #E8EEF8',borderRadius:12,padding:'13px 15px',display:'flex',gap:12,alignItems:'center'}}>
-              <div style={{width:40,height:40,borderRadius:10,background:'#FFF0F0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>📅</div>
-              <div>
-                <div style={{fontSize:12,fontWeight:700,color:'#DC2626',marginBottom:1}}>{f.f}</div>
-                <div style={{fontWeight:700,fontSize:13,color:'#1A2D4A',marginBottom:1}}>{f.n}</div>
-                {f.nota && <div style={{fontSize:11,color:'#8090A0'}}>{f.nota}</div>}
-              </div>
+          {/* Resumen del mes */}
+          <div className="card" style={{padding:'14px 16px'}}>
+            <div style={{fontFamily:'Montserrat',fontWeight:700,color:'#003366',marginBottom:10,fontSize:13}}>
+              📊 Resumen — {MESES[mesActual]}
             </div>
-          ))}
+            {Object.entries(resumenMes).filter(([t]) => t!=='feriado').length === 0
+              ? <div style={{fontSize:12,color:'#9CA3AF',textAlign:'center',padding:'8px 0'}}>Sin obligaciones este mes</div>
+              : Object.entries(resumenMes).filter(([t]) => t!=='feriado').map(([t,cnt]) => {
+                  const info = TIPOS[t] || {color:'#374151',label:t,icon:'📅'};
+                  return (
+                    <div key={t} style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0',borderBottom:'1px solid #F0F4FA'}}>
+                      <div style={{display:'flex',gap:6,alignItems:'center'}}>
+                        <span style={{width:8,height:8,borderRadius:'50%',background:info.color,display:'inline-block',flexShrink:0}}/>
+                        <span style={{fontSize:12,color:'#374151'}}>{info.icon} {info.label}</span>
+                      </div>
+                      <span style={{background:info.color+'15',color:info.color,borderRadius:20,padding:'2px 8px',fontSize:11,fontWeight:700}}>{cnt}</span>
+                    </div>
+                  );
+                })
+            }
+            {resumenMes['feriado'] > 0 && (
+              <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',padding:'5px 0',marginTop:2}}>
+                <span style={{fontSize:12,color:'#9CA3AF'}}>🎌 Feriados</span>
+                <span style={{background:'#F3F4F6',color:'#6B7280',borderRadius:20,padding:'2px 8px',fontSize:11,fontWeight:700}}>{resumenMes['feriado']}</span>
+              </div>
+            )}
+          </div>
+
+          {/* Próximas obligaciones (todos los meses) */}
+          <div className="card" style={{padding:'14px 16px'}}>
+            <div style={{fontFamily:'Montserrat',fontWeight:700,color:'#003366',marginBottom:10,fontSize:13}}>
+              ⏰ Próximos 30 días
+            </div>
+            {proximas.length === 0
+              ? <div style={{fontSize:12,color:'#9CA3AF',textAlign:'center',padding:'8px 0'}}>Sin obligaciones próximas</div>
+              : <div style={{display:'flex',flexDirection:'column',gap:6}}>
+                  {proximas.slice(0,8).map((e,i) => {
+                    const info = TIPOS[e.tipo] || {color:'#374151',icon:'📅'};
+                    return (
+                      <div key={i} onClick={() => { setMesActual(new Date(e.fecha+'T12:00:00').getMonth()); setAnioActual(new Date(e.fecha+'T12:00:00').getFullYear()); setDiaSeleccionado(e.fecha); }}
+                        style={{display:'flex',gap:8,alignItems:'center',cursor:'pointer',padding:'6px 8px',borderRadius:7,border:'1px solid #EEF3FA',background:'#FAFBFF'}}>
+                        <span style={{fontSize:14,flexShrink:0}}>{info.icon}</span>
+                        <div style={{flex:1,minWidth:0}}>
+                          <div style={{fontSize:11,fontWeight:700,color:info.color,whiteSpace:'nowrap',overflow:'hidden',textOverflow:'ellipsis'}}>{e.titulo}</div>
+                          <div style={{fontSize:10,color:'#8090A0'}}>{new Date(e.fecha+'T12:00:00').toLocaleDateString('es-DO',{day:'2-digit',month:'short'})}</div>
+                        </div>
+                        <span style={{background:e.diff===0?'#DC2626':e.diff<=3?'#F97316':e.diff<=7?'#CA8A04':'#16A34A',color:'white',borderRadius:20,padding:'2px 7px',fontSize:10,fontWeight:800,flexShrink:0}}>
+                          {e.diff===0?'HOY':e.diff===1?'Mañana':`${e.diff}d`}
+                        </span>
+                      </div>
+                    );
+                  })}
+                </div>
+            }
+          </div>
         </div>
-        <div style={{background:'#EFF6FF',border:'1px solid #BFDBFE',borderRadius:10,padding:'11px 15px',fontSize:12,color:'#1E40AF'}}>
-          📌 Feriados en domingo se trasladan al lunes siguiente (excepto inamovibles) · Trabajar en feriado = <strong>doble salario obligatorio</strong>
-        </div>
-      </>)}
+      </div>
     </div>
   );
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
 function Dgt3({ employees }) {
   const anio = new Date().getFullYear();
   const [pdfLoading, setPdfLoading] = useState(false);
