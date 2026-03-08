@@ -111,7 +111,8 @@ function calcPayroll(emp, incomesExtra = [], deductionsExtra = []) {
   const periodSalary = (parseFloat(emp.salary) || 0) / freq;
   const tssBased = incomesExtra.filter(i => INCOME_TYPES.find(t => t.value === i.type)?.affectsTSS).reduce((s, i) => s + (i.amount || 0), 0);
   const nonTss = incomesExtra.filter(i => !INCOME_TYPES.find(t => t.value === i.type)?.affectsTSS).reduce((s, i) => s + (i.amount || 0), 0);
-  const baseTSS = periodSalary + tssBased;
+  // Piso mínimo TSS: Art.4 Reglamento TSS — base no puede ser menor al salario mínimo
+  const baseTSS = Math.max(periodSalary + tssBased, SALARIO_MIN_EMPRESA / freq);
   const afpBase = Math.min(baseTSS, RATES.AFP_TOPE / freq);
   const sfsBase = Math.min(baseTSS, RATES.SFS_TOPE / freq);
   const afpWorker = afpBase * RATES.AFP_WORKER;
