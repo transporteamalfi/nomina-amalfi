@@ -144,89 +144,103 @@ function vacationDays(h) { return yearsWorked(h) >= 5 ? 18 : 14; }
 function getAvatarColor(name) { const c = ["#003366","#E8A020","#16A34A","#7C3AED","#DC2626","#0891B2","#DB2777","#059669"]; let h = 0; for (let i = 0; i < name.length; i++) h = (h + name.charCodeAt(i)) % c.length; return c[h]; }
 
 const SEED_EMPLOYEES = [
-  { id:1,  cedula:"00108622952", name:"Cristobal Miguel Baez Toledo",        position:"Mantenimiento",            area:"Operativa",      salary:25700,     hireDate:"2017-06-09", birthdate:"1985-03-15", payFrequency:"quincenal", bank:"Banco Popular",  account:"777413576",  accountType:"Ahorros",  tss:"001", contractType:"Tiempo Indefinido",
+  { id:1,  cedula:"00108622952", name:"Cristobal Miguel Baez Toledo",        position:"Mantenimiento",            area:"Operativa",      salary:25700,     hireDate:"2017-06-09", birthdate:"1962-11-16", payFrequency:"quincenal", bank:"Banco Popular",  account:"777413576",  accountType:"Ahorros",  tss:"001", contractType:"Tiempo Indefinido",
     nss:"11864242",  ars:"SEGURO NACIONAL DE SALUD (SENASA) - REGIMEN CONTRIBUTIVO",
+    telefono:"+18296500651", direccion:"Los Girasoles", municipio:"Santo Domingo de Guzmán", jornada:"Diurna", metodoPago:"Transferencia bancaria",
     licenciaNum:"", licenciaVence:"", dependientes:[] },
-  { id:2,  cedula:"22900069414", name:"Emmanuel Tejeda Ibel",                position:"CHOFER",                   area:"Operativa",      salary:25700,     hireDate:"2019-03-01", birthdate:"1990-07-22", payFrequency:"quincenal", bank:"BHD León",       account:"1234567890", accountType:"Corriente",tss:"002", contractType:"Tiempo Indefinido",
+  { id:2,  cedula:"22900069414", name:"Emmanuel Tejeda Ibel",                position:"CHOFER",                   area:"Operativa",      salary:25700,     hireDate:"2025-08-15", birthdate:"1988-12-29", payFrequency:"quincenal", bank:"",             account:"",           accountType:"",         tss:"001", contractType:"Tiempo Indefinido",
     nss:"75323411",  ars:"PRIMERA ARS",
-    dependientes:[
-      {nss:"162238368", nombre:"Angel David Samboy Solano",    parentesco:"Hijastro"},
-      {nss:"88480496",  nombre:"Cristy Michel Solano Paulino", parentesco:"Compañero(a) de Vida"}
-    ]},
-  { id:3,  cedula:"07600128248", name:"Fausto Mateo",                        position:"CHOFER",                   area:"Operativa",      salary:18421.20,  hireDate:"2020-05-10", birthdate:"1988-11-05", payFrequency:"quincenal", bank:"Banco Popular",  account:"9876543210", accountType:"Ahorros",  tss:"003", contractType:"Tiempo Indefinido",
+    telefono:"+18498560381", direccion:"Calle Genesis #22, Los Girasoles 2do", municipio:"Santo Domingo de Guzmán", jornada:"Mixto", metodoPago:"Efectivo",
+    licenciaNum:"", licenciaVence:"", dependientes:[] },
+  { id:3,  cedula:"07600128248", name:"Fausto Mateo",                           position:"CHOFER",                   area:"Operativa",      salary:25700,     hireDate:"2026-01-06", birthdate:"1974-02-15", payFrequency:"quincenal", bank:"Banco Popular",  account:"0853863348", accountType:"Corriente", tss:"003", contractType:"Tiempo Indefinido",
     nss:"49496675",  ars:"SEGURO NACIONAL DE SALUD (SENASA) - REGIMEN CONTRIBUTIVO",
+    telefono:"+18493919336", direccion:"", municipio:"Santo Domingo de Guzmán", jornada:"Mixto", metodoPago:"Transferencia bancaria",
     licenciaNum:"", licenciaVence:"", dependientes:[] },
-  { id:4,  cedula:"22500154624", name:"Ileanna Ailim Mancebo De Leon",       position:"Contabilidad",             area:"Administrativa", salary:25700,     hireDate:"2021-01-15", birthdate:"1992-08-30", payFrequency:"quincenal", bank:"Scotiabank",     account:"5555555555", accountType:"Ahorros",  tss:"004", contractType:"Tiempo Indefinido",
+  { id:4,  cedula:"22500154624", name:"Ileanna Ailim Mancebo De Leon",       position:"Asesoría Impositiva",             area:"Administrativa", salary:25700,     hireDate:"2018-01-01", birthdate:"1992-08-30", payFrequency:"quincenal", bank:"",               account:"",           accountType:"",         tss:"004", contractType:"Tiempo Indefinido",
     nss:"05791313",  ars:"SEGURO NACIONAL DE SALUD (SENASA) - REGIMEN CONTRIBUTIVO",
+    telefono:"+18296040902", direccion:"Villa Mella", municipio:"Santo Domingo de Guzmán", jornada:"Diurna", metodoPago:"Efectivo",
     licenciaNum:"", licenciaVence:"", dependientes:[] },
-  { id:5,  cedula:"40215914395", name:"Isis Antonia Geronimo Mancebo",       position:"Asistente Administrativa", area:"Administrativa", salary:25700,     hireDate:"2022-02-01", birthdate:"1995-01-10", payFrequency:"quincenal", bank:"BHD León",       account:"7777777777", accountType:"Ahorros",  tss:"005", contractType:"Tiempo Indefinido",
+  { id:5,  cedula:"40211670704", name:"Isis Antonia Geronimo Mancebo",       position:"Asistente Administrativa", area:"Administrativa", salary:25700,     hireDate:"2024-12-04", birthdate:"1997-06-13", payFrequency:"quincenal", bank:"",               account:"",           accountType:"",         tss:"005", contractType:"Tiempo Indefinido",
     nss:"175419151", ars:"ARS FUTURO",
+    telefono:"+18095603012", municipio:"Santo Domingo de Guzmán", jornada:"Diurna", metodoPago:"Efectivo",
     dependientes:[
       {nss:"190272870", nombre:"Nashly Raucely Geronimo Geronimo", parentesco:"Hija"},
       {nss:"190275144", nombre:"Chelsea Isis Geronimo Geronimo",   parentesco:"Hija"}
     ]},
-  { id:6,  cedula:"40215784451", name:"Jorge Francisco Liriano Gonzalez",    position:"CHOFER",                   area:"Operativa",      salary:33894.46,  hireDate:"2018-09-20", birthdate:"1982-06-18", payFrequency:"quincenal", bank:"Banco Popular",  account:"3333333333", accountType:"Ahorros",  tss:"006", contractType:"Tiempo Indefinido",
+  { id:6,  cedula:"40225914395", name:"Jorge Francisco Liriano Gonzalez",    position:"CHOFER",                   area:"Operativa",      salary:27000,     hireDate:"2019-02-20", birthdate:"1998-04-03", payFrequency:"quincenal", bank:"",               account:"",           accountType:"",         tss:"006", contractType:"Tiempo Indefinido",
     nss:"157628986", ars:"ARS APS",
+    telefono:"+18499181476", direccion:"Calle Mariana Jaime #17, Bayona", municipio:"Santo Domingo de Guzmán", jornada:"Mixto", metodoPago:"Efectivo",
     dependientes:[
       {nss:"182401600", nombre:"Silvia Maria Liriano Rosario", parentesco:"Hija"}
     ]},
-  { id:7,  cedula:"40224305553", name:"Jose Alberto Rudecindo Ferreira",     position:"CHOFER",                   area:"Operativa",      salary:25700,     hireDate:"2019-07-01", birthdate:"1979-12-25", payFrequency:"quincenal", bank:"Banco Popular",  account:"4444444444", accountType:"Corriente",tss:"007", contractType:"Tiempo Indefinido",
+  { id:7,  cedula:"40224305553", name:"Jose Alberto Rudecindo Ferreira",     position:"CHOFER",                   area:"Operativa",      salary:25700,     hireDate:"2025-07-07", birthdate:"1991-09-01", payFrequency:"quincenal", bank:"Banco Popular",  account:"833721822",  accountType:"Corriente",tss:"007", contractType:"Tiempo Indefinido",
     nss:"155224520", ars:"ARS APS",
+    telefono:"+18097517157", direccion:"Calle Rosal 16, Los Girasoles 2do", municipio:"Santo Domingo de Guzmán", jornada:"Mixto", metodoPago:"Transferencia bancaria",
     dependientes:[
       {nss:"180583545", nombre:"Jazbel Idelmary Rudecindo Soto",  parentesco:"Hija"},
       {nss:"160550478", nombre:"Frandelin Rodriguez Soto",         parentesco:"Hijastro"},
       {nss:"157413530", nombre:"Clara Ines Soto Peña",             parentesco:"Compañero(a) de Vida"}
     ]},
-  { id:8,  cedula:"00100164328", name:"Jose Manuel Cruz",                    position:"CHOFER",                   area:"Operativa",      salary:25700,     hireDate:"2020-11-15", birthdate:"1987-04-08", payFrequency:"quincenal", bank:"BHD León",       account:"8888888888", accountType:"Ahorros",  tss:"008", contractType:"Tiempo Indefinido",
+  { id:8,  cedula:"00117419952", name:"Jose Manuel Cruz",                    position:"CHOFER",                   area:"Operativa",      salary:25700,     hireDate:"2025-02-04", birthdate:"1984-01-07", payFrequency:"quincenal", bank:"Banco Popular",  account:"0817339112", accountType:"Corriente", tss:"008", contractType:"Tiempo Indefinido",
     nss:"16004328",  ars:"SEGURO NACIONAL DE SALUD (SENASA) - REGIMEN CONTRIBUTIVO",
+    telefono:"+18097517157", direccion:"Carretera de Mendoza #37, Villa Faro", municipio:"Santo Domingo de Guzmán", jornada:"Mixto", metodoPago:"Transferencia bancaria",
     dependientes:[
       {nss:"150428374", nombre:"Jose Darlin Cruz Marte",    parentesco:"Hijo"},
       {nss:"187992644", nombre:"Jose Manuel Cruz Castillo", parentesco:"Hijo"},
       {nss:"150396876", nombre:"Dairenys Cruz Marte",       parentesco:"Hija"}
     ]},
-  { id:9,  cedula:"40211670704", name:"Ramon Antonio Decena",                position:"CHOFER",                   area:"Operativa",      salary:25700,     hireDate:"2021-03-10", birthdate:"1986-09-14", payFrequency:"quincenal", bank:"Banco Popular",  account:"2222222222", accountType:"Ahorros",  tss:"009", contractType:"Tiempo Indefinido",
+  { id:9,  cedula:"40215784451", name:"Ramon Antonio Decena",                position:"CHOFER",                   area:"Operativa",      salary:25700,     hireDate:"2025-05-05", birthdate:"2001-02-13", payFrequency:"quincenal", bank:"Banco Popular",  account:"0849121041", accountType:"Corriente", tss:"009", contractType:"Tiempo Indefinido",
     nss:"166847922", ars:"SEGURO NACIONAL DE SALUD (SENASA) - REGIMEN CONTRIBUTIVO",
+    telefono:"+18492122632", jornada:"Mixto", metodoPago:"Transferencia bancaria",
     licenciaNum:"", licenciaVence:"", dependientes:[] },
-  { id:10, cedula:"22500222868", name:"Wilkim Manuel Bello Perez",           position:"CHOFER",                   area:"Operativa",      salary:25700,     hireDate:"2022-06-01", birthdate:"1993-02-27", payFrequency:"quincenal", bank:"Scotiabank",     account:"6666666666", accountType:"Ahorros",  tss:"010", contractType:"Tiempo Indefinido",
+  { id:10, cedula:"22500222868", name:"Wilkim Manuel Bello Perez",           position:"CHOFER",                   area:"Operativa",      salary:25700,     hireDate:"2021-12-10", birthdate:"1986-10-21", payFrequency:"quincenal", bank:"Banco Popular",  account:"825473028",  accountType:"Ahorros",  tss:"010", contractType:"Tiempo Indefinido",
     nss:"584787796", ars:"SEGURO NACIONAL DE SALUD (SENASA) - REGIMEN CONTRIBUTIVO",
+    telefono:"+18299073461", direccion:"Calle 13, esq 4, Sabana Larga Centro", jornada:"Mixto", metodoPago:"Transferencia bancaria",
     dependientes:[
       {nss:"156564358", nombre:"Mia Elizabeth Bello Nuñez", parentesco:"Hija"}
     ]},
-  { id:11, cedula:"40222131076", name:"Wilfrido Paula Marte",                position:"CHOFER",                   area:"Operativa",      salary:43499.79,  hireDate:"2016-04-01", birthdate:"1975-10-03", payFrequency:"quincenal", bank:"BHD León",       account:"1111111111", accountType:"Corriente",tss:"011", contractType:"Tiempo Indefinido",
+  { id:11, cedula:"40222131076", name:"Wilfrido Paula Marte",                position:"Encargado de Transportacion", area:"Operativa",   salary:40000,     hireDate:"2024-02-01", birthdate:"1992-05-28", payFrequency:"quincenal", bank:"Banco Popular",  account:"0786557710", accountType:"Ahorros",  tss:"011", contractType:"Tiempo Indefinido",
     nss:"67963411",  ars:"ARS RENACER",
+    telefono:"+18094209224", direccion:"Los Girasoles", jornada:"Mixto", metodoPago:"Transferencia bancaria",
     dependientes:[
       {nss:"162580170", nombre:"Wilfredo Paula Garcia",    parentesco:"Hijo"},
       {nss:"150710383", nombre:"Sunilda Garcia Rodriguez", parentesco:"Compañero(a) de Vida"}
     ]},
-  { id:12, cedula:"22900254974", name:"Yarleni Serda Corporan",              position:"Auxiliar",                 area:"Administrativa", salary:18421.20,  hireDate:"2023-01-10", birthdate:"1999-05-20", payFrequency:"quincenal", bank:"Banco Popular",  account:"9999999999", accountType:"Ahorros",  tss:"012", contractType:"Tiempo Indefinido",
+  { id:12, cedula:"22900254974", name:"Yarleni Serda Corporan",              position:"Asistente de limpieza",    area:"Operativa",      salary:9500,  hireDate:"2025-02-19", birthdate:"1995-03-13", payFrequency:"quincenal", bank:"",               account:"",           accountType:"",         tss:"012", contractType:"Tiempo Indefinido",
     nss:"141366042", ars:"ARS COLEGIO MEDICO DOMINICANO CMD",
+    telefono:"+18094788192", direccion:"Calle La Caoba #10, Los Alcarrizos", jornada:"Diurna", metodoPago:"Efectivo",
     dependientes:[
       {nss:"181498776", nombre:"Yadier Francisco Rosario Serda",  parentesco:"Hijo"},
       {nss:"153908052", nombre:"Rosmery Cristal Rosario Serda",   parentesco:"Hija"},
       {nss:"181504981", nombre:"Chaneidi Cristal Rosario Serda",  parentesco:"Hija"}
     ]},
-  { id:13, cedula:"00118845999", name:"Yanelci Alberti Piña",               position:"CHOFER",                   area:"Operativa",      salary:80000,     hireDate:"2015-01-01", birthdate:"1980-01-01", payFrequency:"quincenal", bank:"Banco Popular",  account:"1300000001", accountType:"Ahorros",  tss:"013", contractType:"Tiempo Indefinido",
+  { id:13, cedula:"00118845999", name:"Yanelci Alberti Piña",               position:"Gerente",                   area:"Operativa",      salary:80000,     hireDate:"2015-08-21", birthdate:"1990-09-21", payFrequency:"quincenal", bank:"Banco Popular",  account:"1300000001", accountType:"Ahorros",  tss:"013", contractType:"Tiempo Indefinido",
     nss:"07939920",  ars:"",
     licenciaNum:"", licenciaVence:"", dependientes:[] },
-  { id:14, cedula:"40233217120", name:"Rusmely De La Cruz Perez",            position:"CHOFER",                   area:"Operativa",      salary:27000,     hireDate:"2018-01-01", birthdate:"1985-01-01", payFrequency:"quincenal", bank:"Banco Popular",  account:"1400000001", accountType:"Ahorros",  tss:"014", contractType:"Tiempo Indefinido",
+  { id:14, cedula:"40233217120", name:"Rusmely De La Cruz Perez",            position:"Asistente Administrativa", area:"Administrativa", salary:27000,     hireDate:"2023-09-26", birthdate:"2001-04-01", payFrequency:"quincenal", bank:"Banco Popular",  account:"0836448159", accountType:"Corriente", tss:"014", contractType:"Tiempo Indefinido",
     nss:"07168666",  ars:"",
+    telefono:"+18098489922", direccion:"C/Sol Poniente #64, Los Rieles Villa Linda", municipio:"Santo Domingo de Guzmán", jornada:"Diurna", metodoPago:"Transferencia bancaria",
     licenciaNum:"", licenciaVence:"", dependientes:[] },
-  { id:15, cedula:"07600161546", name:"Seferino De Leon Mendez",             position:"CHOFER",                   area:"Operativa",      salary:25700,     hireDate:"2017-01-01", birthdate:"1983-01-01", payFrequency:"quincenal", bank:"Banco Popular",  account:"1500000001", accountType:"Ahorros",  tss:"015", contractType:"Tiempo Indefinido",
+  { id:15, cedula:"07600161546", name:"Seferino De Leon Mendez",             position:"CHOFER",                   area:"Operativa",      salary:25700,     hireDate:"2016-11-14", birthdate:"1979-05-20", payFrequency:"quincenal", bank:"Banco Popular",  account:"802234641",  accountType:"Corriente", tss:"015", contractType:"Tiempo Indefinido",
     nss:"49218115",  ars:"SEGURO NACIONAL DE SALUD (SENASA) - REGIMEN CONTRIBUTIVO",
+    telefono:"+18098772489", jornada:"Mixto", metodoPago:"Transferencia bancaria",
     dependientes:[
       {nss:"189113670", nombre:"Martha Kayra De Leon Nuñez",        parentesco:"Hija"},
       {nss:"86970141",  nombre:"Jenniffer Cristina Nuñez Abreu",    parentesco:"Compañero(a) de Vida"}
     ]},
-  { id:16, cedula:"00108444787", name:"Santo Feliciano Muñoz Cabrera",       position:"CHOFER",                   area:"Operativa",      salary:22681.42,  hireDate:"2016-01-01", birthdate:"1978-01-01", payFrequency:"quincenal", bank:"Banco Popular",  account:"1600000001", accountType:"Ahorros",  tss:"016", contractType:"Tiempo Indefinido",
+  { id:16, cedula:"00108444787", name:"Santo Feliciano Muñoz Cabrera",       position:"SEGURIDAD",                area:"Operativa",      salary:18067.80,  hireDate:"2019-02-09", birthdate:"1963-11-10", payFrequency:"quincenal", bank:"",               account:"",           accountType:"",         tss:"016", contractType:"Tiempo Indefinido",
     nss:"10697457",  ars:"ARS FUTURO",
+    telefono:"+18492247549", jornada:"Diurna", metodoPago:"Efectivo",
     dependientes:[
       {nss:"5063466",   nombre:"Eladia Perez Mendoza", parentesco:"Cónyuge - Esposa"}
     ]},
-  { id:17, cedula:"00800260077", name:"Rafael Antonio Paula Guerrero",        position:"CHOFER",                   area:"Operativa",      salary:27948.62,  hireDate:"2016-01-01", birthdate:"1982-01-01", payFrequency:"quincenal", bank:"Banco Popular",  account:"1700000001", accountType:"Ahorros",  tss:"017", contractType:"Tiempo Indefinido",
+  { id:17, cedula:"00800260077", name:"Rafael Antonio Paula Guerrero",        position:"CHOFER",                   area:"Operativa",      salary:25700,     hireDate:"2025-02-24", birthdate:"1981-07-19", payFrequency:"quincenal", bank:"Banco Popular",  account:"0847546124", accountType:"Corriente", tss:"017", contractType:"Tiempo Indefinido",
     nss:"19603216",  ars:"ARS RENACER",
+    telefono:"+18295739476", direccion:"Res. Monumental, Manzana E EDIF 28", municipio:"Santo Domingo de Guzmán", jornada:"Mixto", metodoPago:"Transferencia bancaria",
     licenciaNum:"", licenciaVence:"", dependientes:[] },
-  { id:18, cedula:"00108633728", name:"Obispo Confesor Ramirez",              position:"CHOFER",                   area:"Operativa",      salary:18421.20,  hireDate:"2016-01-01", birthdate:"1975-01-01", payFrequency:"quincenal", bank:"Banco Popular",  account:"1800000001", accountType:"Ahorros",  tss:"018", contractType:"Tiempo Indefinido",
+  { id:18, cedula:"00108633728", name:"Obispo Confesor Ramirez",              position:"SEGURIDAD",                area:"Operativa",      salary:18067.80,  hireDate:"2025-01-15", birthdate:"1956-02-21", payFrequency:"quincenal", bank:"",               account:"",           accountType:"",         tss:"018", contractType:"Tiempo Indefinido",
     nss:"11866446",  ars:"ARS DR. YUNEN",
+    jornada:"Nocturna", metodoPago:"Efectivo",
     licenciaNum:"", licenciaVence:"", dependientes:[] },
 ];
 
@@ -372,6 +386,52 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
     return { bdays: bdays.sort((a,b) => a.bd.days - b.bd.days), licencias: licencias.sort((a,b) => a.days - b.days), vacs: vacs.sort((a,b) => a.daysToVac - b.daysToVac) };
   }, [employees]);
 
+
+  function exportarExcelDGT3() {
+    if (!window.XLSX) { alert('SheetJS no disponible'); return; }
+    const TURNO_MAP = {
+      'Diurna':   'Lunes a Viernes de 8am a 5pm. Sábados de 8am a 12pm.',
+      'Nocturna': 'Lunes a Sabado 7pm a 7am',
+      'Mixto':    'Lunes a Viernes de 6am a 8am y de 4:30pm a 6:30pm',
+    };
+    const rows = [...employees]
+      .filter(e => !e.exitDate)
+      .sort((a,b)=>a.name.localeCompare(b.name))
+      .map(emp => {
+        const parts = emp.name.trim().split(' ').filter(Boolean);
+        let nombres='', ap1='', ap2='';
+        if (parts.length>=4){nombres=parts.slice(0,-2).join(' ');ap1=parts[parts.length-2];ap2=parts[parts.length-1];}
+        else if(parts.length===3){nombres=parts[0];ap1=parts[1];ap2=parts[2];}
+        else if(parts.length===2){nombres=parts[0];ap1=parts[1];}
+        else{nombres=emp.name;}
+        let iniVac='';
+        if(emp.hireDate){const h=new Date(emp.hireDate+'T12:00:00');h.setFullYear(h.getFullYear()+1);iniVac=h.toISOString().substring(0,10);}
+        return {
+          'Numero de documento': emp.cedula||'',
+          'Nombres':             nombres,
+          'Primer Apellido':     ap1,
+          'Segundo Apellido':    ap2,
+          'Fecha de Nacimiento': emp.birthdate||'',
+          'Sexo':                '',
+          'Salario':             parseFloat(emp.salary)||0,
+          'Fecha de Ingreso':    emp.hireDate||emp.startDate||'',
+          'Fecha de Salida':     emp.exitDate||'',
+          'Ocupación':           emp.position||'',
+          'Ocupacion_desc':      '',
+          'Inicio de Vacaciones':iniVac,
+          'Turno':               TURNO_MAP[emp.jornada||'']||emp.jornada||'',
+          'Localidad':           'Transporte Empresarial Amalfi SRL',
+          'Nacionalidad':        'Dominicana',
+          'Observación':         '',
+        };
+      });
+    const ws = window.XLSX.utils.json_to_sheet(rows);
+    ws['!cols']=[{wch:18},{wch:22},{wch:18},{wch:18},{wch:18},{wch:6},{wch:12},{wch:14},{wch:14},{wch:22},{wch:30},{wch:18},{wch:55},{wch:28},{wch:14},{wch:20}];
+    const wb = window.XLSX.utils.book_new();
+    window.XLSX.utils.book_append_sheet(wb, ws, 'Hoja3');
+    window.XLSX.writeFile(wb, `DGT3_Amalfi_${new Date().toISOString().substring(0,10)}.xlsx`);
+  }
+
   return (
     <div className="app">
       <style>{CSS}</style>
@@ -398,7 +458,7 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
           </div>
         </div>
         <nav className="nav">
-          {[["dashboard","🏠 Inicio"],["empleados","👥 Empleados"],["nomina","💰 Nómina"],["reportes","📊 Reportes"],["formularios","📄 Formularios DGII"],["prestaciones","💼 Prestaciones"],["navidad","🎄 Navidad"],["bonificacion","🏆 Bonificación"],["vacaciones","🏖️ Vacaciones"],["calendario","📅 Calendario"]].map(([v,l]) => (
+          {[["dashboard","🏠 Inicio"],["empleados","👥 Empleados"],["nomina","💰 Nómina"],["reportes","📊 Reportes"],["formularios","📄 Formularios DGII"],["prestaciones","💼 Prestaciones"],["navidad","🎄 Navidad"],["bonificacion","🏆 Bonificación"],["vacaciones","🏖️ Vacaciones"],["calendario","📅 Calendario"],["dgt3","📋 DGT-3"]].map(([v,l]) => (
             <button key={v} className={`nb${view===v?" on":""}`} onClick={() => setView(v)}>{l}</button>
           ))}
           <div style={{marginLeft:"auto",display:"flex",gap:4,alignItems:"center"}}>
@@ -418,6 +478,9 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
         {view === "bonificacion" && <Bonificacion employees={employees} />}
         {view === "vacaciones" && <Vacaciones employees={employees} />}
         {view === "calendario" && <Calendario />}
+        {view === "dgt3" && <Dgt3 employees={employees} />}
+        {view === "calendario" && <Calendario />}
+        {view === "dgt3" && <Dgt3 employees={employees} />}
       </main>
       {toast && <Toast msg={toast.msg} type={toast.type} onDone={()=>setToast(null)}/>}
       {showNewEmp && (
@@ -441,7 +504,7 @@ function Dashboard({ employees, reminders, periods, setView }) {
         <button className="btn bac" onClick={() => setView("nomina")}>+ Nueva Nómina</button>
       </div>
       <div className="g4 mb4">
-        {[{l:"Empleados Activos",v:employees.length,i:"👥",c:"#003366",n:"Plan Pro: 40 máx"},{l:"Pago Neto Quincenal",v:fmt(totalNeto),i:"💵",c:"#E8A020",n:"A empleados"},{l:"Costo Total Empresa",v:fmt(totalCosto),i:"🏢",c:"#7C3AED",n:"Incl. aportes TSS"},{l:"Alertas Activas",v:reminders.bdays.length+reminders.vacs.length,i:"🔔",c:"#DC2626",n:"Cumpleaños + vacaciones"}].map((s,i) => (
+        {[{l:"Empleados Activos",v:employees.length,i:"👥",c:"#003366",n:"Plan Pro: 40 máx"},{l:"Pago Neto Quincenal",v:fmt(totalNeto),i:"💵",c:"#E8A020",n:"A empleados"},{l:"Costo Total Empresa",v:fmt(totalCosto),i:"🏢",c:"#7C3AED",n:"Incl. aportes TSS"},{l:"Alertas Activas",v:reminders.bdays.length+reminders.vacs.length+(reminders.pagos?reminders.pagos.filter(p=>p.diff<=14).length:0),i:"🔔",c:"#DC2626",n:"Cumpleaños + vacaciones + pagos"}].map((s,i) => (
           <div key={i} className="stat" style={{borderLeftColor:s.c}}>
             <div className="sl">{s.i} {s.l}</div>
             <div className="sv" style={{color:s.c}}>{s.v}</div>
@@ -524,7 +587,8 @@ function Employees({ employees, setEmployees, editEmp, setEditEmp, showNew, setS
   const filtered = employees.filter(e => e.name.toLowerCase().includes(search.toLowerCase()) || e.cedula.includes(search) || e.position.toLowerCase().includes(search.toLowerCase()));
   return (
     <>
-      <div className="fjb mb3"><div><div className="pt">Empleados</div><div className="ps">Gestiona tu equipo · {employees.length} / 40</div></div><button className="btn bp1" onClick={() => setShowNew(true)}>+ Nuevo Empleado</button></div>
+      <div className="fjb mb3"><div><div className="pt">Empleados</div><div className="ps">Gestiona tu equipo · {employees.length} / 40</div></div><button className="btn bp1" onClick={() => setShowNew(true)}>+ Nuevo Empleado</button>
+            <button onClick={exportarExcelDGT3} style={{marginLeft:8,padding:"8px 16px",background:"#1A6B3A",color:"white",border:"none",borderRadius:10,fontWeight:700,cursor:"pointer",fontSize:13}}>⬇️ Exportar DGT-3 Excel</button></div>
       <div className="card">
         <div className="fjb mb3"><input className="fi" style={{width:300}} placeholder="🔍 Buscar por nombre, cédula o cargo..." value={search} onChange={e => setSearch(e.target.value)} /><span className="tm">{filtered.length} resultado{filtered.length!==1?"s":""}</span></div>
         <div className="tw">
@@ -592,6 +656,10 @@ function EmployeeDetail({ emp, onClose, onEdit }) {
             {icon:"💰", l:"Salario Mensual",   v:fmt(emp.salary)},
             {icon:"📅", l:"Fecha de Ingreso",  v:fmtDate(emp.hireDate)},
             {icon:"🏦", l:"Banco / Cuenta",    v:emp.bank ? `${emp.bank} · ${emp.account} (${emp.accountType})` : "—"},
+            {icon:"📞", l:"Teléfono",           v:emp.telefono||"—"},
+            {icon:"📍", l:"Dirección",           v:emp.direccion ? `${emp.direccion}${emp.municipio?", "+emp.municipio:""}` : "—"},
+            {icon:"⏰", l:"Jornada",             v:emp.jornada||"—"},
+            {icon:"💳", l:"Método de Pago",      v:emp.metodoPago||"—"},
             {icon:"📋", l:"Contrato",          v:emp.contractType},
             {icon:"🪪", l:"Licencia Conducir", v:emp.licenciaNum ? `${emp.licenciaNum} · Vence: ${fmtDate(emp.licenciaVence)}` : "—"},
           ].map((f,i)=>(
@@ -725,7 +793,10 @@ function EmployeeModal({ onClose, onSave, initial }) {
       <div className="g2"><div className="fg"><label className="fl">Fecha de Nacimiento</label><input className="fi" type="text" placeholder="DD/MM/AAAA" maxLength={10} value={toDisplayDate(form.birthdate)} onChange={e=>{ const v=e.target.value.replace(/[^0-9/]/g,""); set("birthdate", fromDisplayDate(v)); }} onBlur={e=>{ if(e.target.value && !isValidDisplayDate(e.target.value)) e.target.style.borderColor="#DC2626"; else e.target.style.borderColor=""; }}/></div><div className="fg"><label className="fl">Fecha de Ingreso *</label><input className="fi" type="text" placeholder="DD/MM/AAAA" maxLength={10} value={toDisplayDate(form.hireDate)} onChange={e=>{ const v=e.target.value.replace(/[^0-9/]/g,""); set("hireDate", fromDisplayDate(v)); }} onBlur={e=>{ if(e.target.value && !isValidDisplayDate(e.target.value)) e.target.style.borderColor="#DC2626"; else e.target.style.borderColor=""; }}/></div></div>
       <div className="g2"><div className="fg"><label className="fl">Salario Mensual (RD$) *</label><input className="fi" type="number" value={form.salary} onChange={e=>set("salary",parseFloat(e.target.value)||0)}/></div><div className="fg"><label className="fl">Frecuencia de Pago</label><select className="fs" value={form.payFrequency} onChange={e=>set("payFrequency",e.target.value)}><option value="quincenal">Quincenal</option><option value="mensual">Mensual</option></select></div></div>
       <div className="g2"><div className="fg"><label className="fl">Banco</label><select className="fs" value={form.bank} onChange={e=>set("bank",e.target.value)}><option value="">Seleccionar...</option>{["Banco Popular","BHD León","Scotiabank","Banreservas","Banco Santa Cruz"].map(b=><option key={b}>{b}</option>)}</select></div><div className="fg"><label className="fl">No. de Cuenta</label><input className="fi" value={form.account} onChange={e=>set("account",e.target.value)}/></div></div>
-      <div className="g2"><div className="fg"><label className="fl">Tipo de Cuenta</label><select className="fs" value={form.accountType} onChange={e=>set("accountType",e.target.value)}><option>Ahorros</option><option>Corriente</option></select></div><div className="fg"><label className="fl">Tipo de Contrato</label><select className="fs" value={form.contractType} onChange={e=>set("contractType",e.target.value)}><option>Tiempo Indefinido</option><option>Fijo</option><option>Temporal</option></select></div></div>
+      <div className="g2"><div className="fg"><label className="fl">Tipo de Cuenta</label><select className="fs" value={form.accountType} onChange={e=>set("accountType",e.target.value)}><option>Ahorros</option><option>Corriente</option></select></div><div className="fg"><label className="fl">Teléfono</label><input className="fi" value={form.telefono||""} onChange={e=>set("telefono",e.target.value)} placeholder="+18291234567"/></div></div>
+      <div className="g2"><div className="fg"><label className="fl">Dirección</label><input className="fi" value={form.direccion||""} onChange={e=>set("direccion",e.target.value)} placeholder="Calle, No., Sector"/></div><div className="fg"><label className="fl">Municipio</label><input className="fi" value={form.municipio||""} onChange={e=>set("municipio",e.target.value)} placeholder="Santo Domingo de Guzmán"/></div></div>
+      <div className="g2"><div className="fg"><label className="fl">Jornada Laboral</label><select className="fs" value={form.jornada||""} onChange={e=>set("jornada",e.target.value)}><option value="">Seleccionar...</option><option>Diurna</option><option>Mixto</option><option>Nocturna</option></select></div><div className="fg"><label className="fl">Método de Pago</label><select className="fs" value={form.metodoPago||""} onChange={e=>set("metodoPago",e.target.value)}><option value="">Seleccionar...</option><option>Efectivo</option><option>Transferencia bancaria</option><option>Cheque</option></select></div></div>
+      <div className="g2"><div className="fg"><label className="fl">Tipo de Contrato</label><select className="fs" value={form.contractType} onChange={e=>set("contractType",e.target.value)}><option>Tiempo Indefinido</option><option>Fijo</option><option>Temporal</option></select></div></div>
 
       {/* NSS y ARS */}
       <div style={{margin:"16px 0 8px",padding:"12px 14px",background:"#EFF6FF",borderRadius:10,border:"1px solid #BFDBFE"}}>
@@ -1743,6 +1814,48 @@ function Reportes({ employees, periods, deletePeriod }) {
           </div>
         </>
       )}
+
+      {/* ── Recordatorios de Pago ── */}
+      {reminders.pagos && reminders.pagos.length > 0 && (
+        <div className="card" style={{borderLeft:"4px solid #7B4F00",marginBottom:16}}>
+          <div style={{fontFamily:"Montserrat",fontWeight:700,color:"#7B4F00",marginBottom:12,fontSize:15}}>
+            💰 Recordatorios de Pago y Obligaciones Laborales
+          </div>
+          {reminders.pagos.map((p,i) => {
+            const COLOR = {tss:"#6B21A8",isr:"#DC2626",navidad:"#1A6B3A",bonif:"#7B4F00",dgt3:"#003366",vac:"#1E40AF"};
+            const ICON  = {tss:"🏦",isr:"📋",navidad:"🎄",bonif:"🏆",dgt3:"📋",vac:"🏖️"};
+            const c = COLOR[p.tipo]||"#374151";
+            const overdue = p.diff < 0;
+            const urgent  = p.diff >= 0 && p.diff <= 7;
+            const bg = overdue ? "#FEF2F2" : urgent ? "#FFF7ED" : "#F8FAFF";
+            const border = overdue ? "#FECACA" : urgent ? "#FED7AA" : "#E8EEF8";
+            return (
+              <div key={i} style={{background:bg,border:`1px solid ${border}`,borderRadius:10,
+                padding:"10px 14px",marginBottom:8,display:"flex",gap:12,alignItems:"center"}}>
+                <div style={{fontSize:22,flexShrink:0}}>{ICON[p.tipo]||"📅"}</div>
+                <div style={{flex:1}}>
+                  <div style={{fontWeight:700,color:c,fontSize:13,marginBottom:2}}>{p.titulo}</div>
+                  <div style={{fontSize:12,color:"#5A7090"}}>{p.desc}</div>
+                </div>
+                <div style={{textAlign:"right",flexShrink:0}}>
+                  <div style={{fontSize:12,color:"#8090A0"}}>{p.fecha.toLocaleDateString("es-DO",{day:"2-digit",month:"2-digit",year:"numeric"})}</div>
+                  <div style={{fontWeight:800,fontSize:13,
+                    color:overdue?"#DC2626":urgent?"#F97316":"#003366"}}>
+                    {overdue ? `Venció hace ${Math.abs(p.diff)} días` : p.diff===0 ? "¡Hoy!" : `En ${p.diff} días`}
+                  </div>
+                </div>
+                {(overdue||urgent) && (
+                  <span style={{background:overdue?"#DC2626":"#F97316",color:"white",
+                    borderRadius:8,padding:"3px 8px",fontSize:11,fontWeight:700,flexShrink:0}}>
+                    {overdue?"VENCIDO":"URGENTE"}
+                  </span>
+                )}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
 
       {/* ── TAB: PLANILLA TSS ── */}
       {tssTab === "planilla" && (
@@ -3679,119 +3792,480 @@ function Vacaciones({ employees }) {
 
 // ═══════════════════════════════════════════════════════════════════════════
 //  CALENDARIO LABORAL — Feriados RD 2026 + Fechas Importantes
-// ═══════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════
+//  CALENDARIO LABORAL — Compliance · TSS 2026 · Feriados
+// ══════════════════════════════════════════════════════════════════════════
 function Calendario() {
-  const [tab, setTab] = useState('feriados');
+  const [tab, setTab] = useState('compliance');
+  const hoy = new Date(); hoy.setHours(12,0,0,0);
+  const diasPara = d => { const x = new Date(d); x.setHours(12,0,0,0); return Math.ceil((x-hoy)/86400000); };
+  const fmtES = d => new Date(d).toLocaleDateString('es-DO',{day:'2-digit',month:'short',year:'numeric'});
 
-  const FERIADOS_2026 = [
-    { fecha:'Jueves 1 de enero',    nombre:'Año Nuevo',                       nota:'No se cambia',              inamovible:true },
-    { fecha:'Lunes 5 de enero',     nombre:'Día de los Santos Reyes',         nota:'Cambiado desde el martes 6',inamovible:false },
-    { fecha:'Miércoles 21 de enero',nombre:'Nuestra Señora de la Altagracia', nota:'No se cambia',              inamovible:true },
-    { fecha:'Lunes 26 de enero',    nombre:'Juan Pablo Duarte',               nota:'No se cambia',              inamovible:true },
-    { fecha:'Viernes 27 de febrero',nombre:'Día de la Independencia Nacional',nota:'Inamovible',               inamovible:true },
-    { fecha:'Viernes 3 de abril',   nombre:'Viernes Santo',                   nota:'Inamovible',               inamovible:true },
-    { fecha:'Lunes 4 de mayo',      nombre:'Día del Trabajo',                 nota:'Cambiado desde el viernes 1',inamovible:false },
-    { fecha:'Jueves 4 de junio',    nombre:'Corpus Christi',                  nota:'No se cambia',              inamovible:false },
-    { fecha:'Domingo 16 de agosto', nombre:'Día de la Restauración',          nota:'No se cambia',              inamovible:true },
-    { fecha:'Jueves 24 de septiembre',nombre:'Nuestra Señora de las Mercedes',nota:'No se cambia',             inamovible:false },
-    { fecha:'Lunes 9 de noviembre', nombre:'Día de la Constitución',          nota:'Cambiado desde el viernes 6',inamovible:false },
-    { fecha:'Viernes 25 de diciembre',nombre:'Navidad',                       nota:'No se cambia',              inamovible:true },
+  const TSS_2026 = [
+    {mes:'Diciembre 2025',  limite:'2026-01-07'},
+    {mes:'Enero 2026',      limite:'2026-02-04'},
+    {mes:'Febrero 2026',    limite:'2026-03-04'},
+    {mes:'Marzo 2026',      limite:'2026-04-06'},
+    {mes:'Abril 2026',      limite:'2026-05-06'},
+    {mes:'Mayo 2026',       limite:'2026-06-03'},
+    {mes:'Junio 2026',      limite:'2026-07-03'},
+    {mes:'Julio 2026',      limite:'2026-08-05'},
+    {mes:'Agosto 2026',     limite:'2026-09-03'},
+    {mes:'Septiembre 2026', limite:'2026-10-05'},
+    {mes:'Octubre 2026',    limite:'2026-11-04'},
+    {mes:'Noviembre 2026',  limite:'2026-12-03'},
   ];
 
-  const FECHAS_IMPORTANTES = [
-    { icono:'🎄', color:'#1A6B3A', bg:'#F0FFF4', titulo:'Pago de Regalía Pascual (Salario de Navidad)',
-      desc:'Debe pagarse antes del 20 de diciembre. Equivale a 1/12 del salario ordinario devengado en el año. Exento de ISR. (Art. 219 Código de Trabajo)' },
-    { icono:'🏆', color:'#7C3AED', bg:'#F5F3FF', titulo:'Pago de Bonificación Anual',
-      desc:'Debe pagarse entre 90 y 120 días tras el cierre fiscal. Si la empresa cierra en diciembre, el plazo vence el 30 de abril. Equivale al 10% de utilidades netas. (Art. 223 C.T.)' },
-    { icono:'🏖️', color:'#0369A1', bg:'#F0F9FF', titulo:'Cartel de Vacaciones',
-      desc:'El empleador debe publicar el calendario de vacaciones durante los primeros 15 días de enero. Las vacaciones deben pagarse el día ANTERIOR al inicio del descanso. (Art. 186 C.T.)' },
-    { icono:'💰', color:'#DC2626', bg:'#FEF2F2', titulo:'Pago TSS (AFP + SFS)',
-      desc:'Los aportes a la Seguridad Social (AFP y SFS) deben pagarse antes del día 10 del mes siguiente al período. Se reportan a través del sistema SUIR. (Ley 87-01)' },
-    { icono:'📋', color:'#B45309', bg:'#FFFBEB', titulo:'Declaración ISR Empleados',
-      desc:'Los empleadores deben retener y pagar mensualmente el ISR de sus empleados. La declaración anual (IR-1) se presenta antes del 31 de marzo del año siguiente. (Art. 296 C.T.)' },
-    { icono:'📊', color:'#0E7490', bg:'#ECFEFF', titulo:'Planilla TSS (AM.txt)',
-      desc:'La planilla mensual de cotizaciones debe enviarse a la TSS vía archivo AM.txt (formato SUIRPLUS, Instructivo v6.0) antes del día 10 de cada mes.' },
-    { icono:'⚠️', color:'#DC2626', bg:'#FEF2F2', titulo:'Salario Mínimo Nacional 2026',
-      desc:'El salario mínimo nacional vigente desde 2026 es RD$23,223.00 mensuales para el sector no sectorizado. Los salarios no pueden estar por debajo de este monto.' },
-    { icono:'📅', color:'#5A7090', bg:'#F8FAFF', titulo:'Preaviso y Cesantía',
-      desc:'Al despedir sin causa: preaviso de 7 días (3-6 meses), 14 días (6-12 meses), 28 días (+1 año). Cesantía según escala del Art. 80. Plazo de pago: 10 días tras la terminación.' },
+  function buildCompliance() {
+    const y=2026; const items=[];
+    const add = (fecha,titulo,subtitulo,tipo,recurrente) =>
+      items.push({fecha,titulo,subtitulo,tipo,recurrente,diff:diasPara(fecha)});
+
+    // ── Ministerio de Trabajo ──
+    add(`${y}-01-15`,'Cartel de Vacaciones','Publicar calendario vacaciones en instalaciones (Art. 186 CT)','dgt','Anual');
+    add(`${y}-01-31`,'DGT-3 — Planilla Personal Fijo','Renovación anual (prorrogado) — portal ovi.mt.gob.do','dgt','Anual');
+    for(let m=1;m<=12;m++){
+      const mm=String(m).padStart(2,'0');
+      add(`${y}-${mm}-05`,'DGT-4 — Cambios Personal Fijo','Incorporaciones, salidas y aumentos del mes anterior','dgt','Mensual');
+      add(`${y}-${mm}-10`,'DGT-2 — Horas Extraordinarias','Reporte horas extras del mes anterior — Min. Trabajo','dgt','Mensual');
+    }
+    // ── TSS con fechas exactas publicadas ──
+    TSS_2026.forEach(t=>add(t.limite,'TSS — AFP + SFS + SRL + INFOTEP',`Aportes ${t.mes} sin recargo · SUIR de la TSS`,'tss','Mensual'));
+    // ── DGII día 10: IR-3 e IR-17 ──
+    for(let m=1;m<=12;m++){
+      const mm=String(m).padStart(2,'0');
+      add(`${y}-${mm}-10`,'IR-3 — Retenciones Asalariados','Declaración retenciones ISR empleados — DGII','isr','Mensual');
+      add(`${y}-${mm}-10`,'IR-17 — Retenciones y Retribuciones','Otras retenciones y retribuciones complementarias — DGII','isr','Mensual');
+    }
+    // ── DGII día 15: Formatos 606/607/608/609 ──
+    for(let m=1;m<=12;m++){
+      const mm=String(m).padStart(2,'0');
+      add(`${y}-${mm}-15`,'Formato 606 — Compras','Reporte compras con RNC, NCF, ITBIS — DGII','dgii','Mensual');
+      add(`${y}-${mm}-15`,'Formato 607 — Ventas','Reporte ventas con NCF y retenciones — DGII','dgii','Mensual');
+      add(`${y}-${mm}-15`,'Formato 608 — Anulaciones','Comprobantes anulados del período — DGII','dgii','Mensual');
+      add(`${y}-${mm}-15`,'Formato 609 — Pagos Exterior','Pagos a proveedores del exterior — DGII','dgii','Mensual');
+    }
+    // ── DGII día 20: IT-1 ITBIS ──
+    for(let m=1;m<=12;m++){
+      const mm=String(m).padStart(2,'0');
+      add(`${y}-${mm}-20`,'IT-1 — ITBIS Mensual','Impuesto Transferencia Bienes y Servicios — DGII (día 20)','itbis','Mensual');
+    }
+    // ── Nómina quincenal ──
+    for(let m=1;m<=12;m++){
+      const mm=String(m).padStart(2,'0');
+      const ult=new Date(y,m,0).getDate();
+      add(`${y}-${mm}-10`,'Pago Nómina — 1ra Quincena','Pago quincenal empleados','nomina','Quincenal');
+      add(`${y}-${mm}-${Math.min(25,ult)}`,'Pago Nómina — 2da Quincena','Pago quincenal empleados','nomina','Quincenal');
+    }
+    // ── Anuales ──
+    add(`${y}-03-31`,'IR-1 — ISR Personas Físicas','Declaración jurada anual personas físicas — DGII (31 marzo)','isr','Anual');
+    add(`${y}-04-30`,'IR-2 — ISR Sociedades','Declaración jurada anual personas jurídicas — DGII (120 días)','isr','Anual');
+    add(`${y}-04-30`,'ACT — Activos Imponibles','Declaración activos imponibles — DGII (120 días cierre dic)','isr','Anual');
+    add(`${y}-04-30`,'Bonificación Anual','10% utilidades netas (Art. 223 CT) — plazo 30 abril','bonif','Anual');
+    add(`${y}-05-15`,'⚡ e-CF — Facturación Electrónica','Obligatorio para todos los contribuyentes (Ley 32-23) — registrarse en DGII antes del 15 mayo','ecf','Único');
+    add(`${y}-11-30`,'Navidad — 1er Pago (50%)','Primer 50% de la regalía pascual (Art. 219 CT)','navidad','Anual');
+    add(`${y}-12-20`,'Navidad — 2do Pago (50%)','Segundo 50% regalía pascual — plazo final 20 dic','navidad','Anual');
+    return items.filter(i=>i.diff>=-3).sort((a,b)=>a.diff-b.diff);
+  }}
+
+  const TIPO_COLOR={tss:'#6B21A8',isr:'#DC2626',dgii:'#0369A1',dgt:'#003366',nomina:'#1A6B3A',bonif:'#7B4F00',navidad:'#065F46',itbis:'#B45309',ecf:'#7C3AED'};
+  const TIPO_ICON ={tss:'🏦',isr:'📋',dgii:'📊',dgt:'📋',nomina:'💵',bonif:'🏆',navidad:'🎄',itbis:'🧾',ecf:'⚡'};
+  const TIPO_LABEL={tss:'TSS',isr:'DGII-ISR',dgii:'DGII',dgt:'Min. Trabajo',nomina:'Nómina',bonif:'Bonificación',navidad:'Navidad',itbis:'ITBIS',ecf:'e-CF'};
+
+  const compliance = buildCompliance();
+  const [filtroTipo, setFiltroTipo] = useState('all');
+  const visible = compliance.filter(i=>i.diff<=90);
+  const visibleF = filtroTipo==='all' ? visible : visible.filter(i=>i.tipo===filtroTipo);
+  const nextTSS = TSS_2026.find(t=>diasPara(t.limite)>=0);
+
+  function CountdownBadge({diff}) {
+    const bg = diff<0?'#DC2626':diff<=2?'#DC2626':diff<=7?'#F97316':diff<=14?'#CA8A04':'#16A34A';
+    return <span style={{background:bg,color:'white',borderRadius:20,padding:'3px 10px',fontSize:11,fontWeight:800,whiteSpace:'nowrap'}}>
+      {diff<0?`Venció hace ${Math.abs(diff)}d`:diff===0?'¡HOY!': `${diff} días`}
+    </span>;
+  }
+
+  const FERIADOS_2026=[
+    {f:'Jue 1 Ene', n:'Año Nuevo',                  nota:'Inamovible'},
+    {f:'Lun 5 Ene', n:'Día de los Reyes Magos',     nota:'Cambiado desde mar 6'},
+    {f:'Mié 21 Ene',n:'Ntra. Sra. de la Altagracia',nota:'Inamovible'},
+    {f:'Lun 26 Ene',n:'Juan Pablo Duarte',           nota:'Inamovible'},
+    {f:'Vie 27 Feb',n:'Día de la Independencia',     nota:'Inamovible'},
+    {f:'Vie 3 Abr', n:'Viernes Santo',               nota:'Inamovible'},
+    {f:'Lun 4 May', n:'Día del Trabajo',             nota:'Cambiado desde vie 1'},
+    {f:'Jue 4 Jun', n:'Corpus Christi',              nota:''},
+    {f:'Dom 16 Ago',n:'Día de la Restauración',      nota:'Inamovible'},
+    {f:'Jue 24 Sep',n:'Ntra. Sra. de las Mercedes',  nota:''},
+    {f:'Lun 9 Nov', n:'Día de la Constitución',      nota:'Cambiado desde vie 6'},
+    {f:'Vie 25 Dic',n:'Navidad',                     nota:'Inamovible'},
   ];
 
   return (
-    <div style={{maxWidth:900,margin:'0 auto',padding:24}}>
+    <div style={{maxWidth:980,margin:'0 auto',padding:24}}>
       <h2 style={{fontFamily:'Montserrat',color:'#003366',marginBottom:4}}>📅 Calendario Laboral 2026</h2>
-      <p style={{fontSize:13,color:'#5A7090',marginBottom:20}}>
-        Feriados nacionales, fechas clave y obligaciones laborales en República Dominicana
-      </p>
+      <p style={{fontSize:13,color:'#5A7090',marginBottom:20}}>TSS, DGII (IR-3, IR-17, IT-1, 606-609), Ministerio de Trabajo y Facturación Electrónica (e-CF Ley 32-23)</p>
 
-      {/* Tabs */}
       <div style={{display:'flex',gap:8,marginBottom:20}}>
-        {[['feriados','📅 Feriados Nacionales'],['fechas','📋 Fechas Importantes']].map(([id,label])=>(
-          <button key={id} onClick={()=>setTab(id)}
-            style={{padding:'9px 20px',borderRadius:20,border:'none',cursor:'pointer',
-              fontWeight:700,fontSize:13,
-              background:tab===id?'#003366':'#F0F4FA',
-              color:tab===id?'white':'#5A7090',
-              boxShadow:tab===id?'0 2px 8px rgba(0,51,102,.25)':'none'}}>
-            {label}
-          </button>
+        {[['compliance','⏰ Compliance & Pagos'],['tss','🏦 TSS 2026'],['feriados','📆 Feriados']].map(([v,l])=>(
+          <button key={v} onClick={()=>setTab(v)} style={{padding:'9px 18px',borderRadius:10,border:'none',cursor:'pointer',fontWeight:700,fontSize:13,background:tab===v?'#003366':'#F0F4FA',color:tab===v?'white':'#5A7090'}}>{l}</button>
         ))}
       </div>
 
-      {tab === 'feriados' && (
-        <>
-          <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:16}}>
-            {FERIADOS_2026.map((f,i)=>(
-              <div key={i} style={{background:'white',borderRadius:12,padding:'14px 16px',
-                boxShadow:'0 2px 8px rgba(0,51,102,.08)',
-                borderLeft:`4px solid ${f.inamovible?'#DC2626':'#003366'}`,
-                display:'flex',gap:12,alignItems:'flex-start'}}>
-                <div style={{background:f.inamovible?'#FEE2E2':'#EEF3FF',borderRadius:8,
-                  padding:'8px',fontSize:18,flexShrink:0}}>📅</div>
-                <div>
-                  <div style={{fontSize:12,fontWeight:700,color:f.inamovible?'#DC2626':'#003366',marginBottom:2}}>
-                    {f.fecha}
+      {tab==='compliance' && (<>
+        <div style={{display:'grid',gridTemplateColumns:'repeat(4,1fr)',gap:10,marginBottom:16}}>
+          {[['🔴 Vencidos/Hoy',visible.filter(i=>i.diff<=0).length,'#DC2626'],
+            ['🟠 Esta semana',visible.filter(i=>i.diff>0&&i.diff<=7).length,'#F97316'],
+            ['🟡 Este mes',visible.filter(i=>i.diff>7&&i.diff<=30).length,'#CA8A04'],
+            ['🟢 Próx. 90 días',visible.filter(i=>i.diff>30&&i.diff<=90).length,'#16A34A'],
+          ].map(([l,v,c])=>(
+            <div key={l} className="card" style={{textAlign:'center',padding:'12px 8px'}}>
+              <div style={{fontSize:11,color:'#5A7090',marginBottom:4}}>{l}</div>
+              <div style={{fontSize:22,fontWeight:800,color:c}}>{v}</div>
+            </div>
+          ))}
+        </div>
+        {/* e-CF Facturación Electrónica alert */}
+        {(() => {const ecfDiff=diasPara('2026-05-15'); return ecfDiff>=0 && ecfDiff<=90 && (
+          <div style={{background:'#F5F3FF',border:'2px solid #7C3AED',borderRadius:12,
+            padding:'13px 16px',marginBottom:14,display:'flex',gap:12,alignItems:'center'}}>
+            <div style={{fontSize:24}}>⚡</div>
+            <div style={{flex:1}}>
+              <div style={{fontWeight:800,color:'#7C3AED',fontSize:13,marginBottom:2}}>
+                Facturación Electrónica (e-CF) — Obligatorio antes del 15 de mayo 2026
+              </div>
+              <div style={{fontSize:12,color:'#5B21B6',lineHeight:1.6}}>
+                Ley 32-23: todos los contribuyentes deben implementar comprobantes fiscales electrónicos. Regístrate en la DGII, obtén certificado digital y usa software autorizado.
+              </div>
+            </div>
+            <div style={{textAlign:'right',flexShrink:0}}>
+              <div style={{fontSize:11,color:'#8090A0',marginBottom:4}}>15 mayo 2026</div>
+              <span style={{background:'#7C3AED',color:'white',borderRadius:20,padding:'3px 10px',fontSize:11,fontWeight:800}}>{ecfDiff} días</span>
+            </div>
+          </div>
+        );})()}
+        <div style={{display:'flex',gap:6,flexWrap:'wrap',marginBottom:16}}>
+          <button onClick={()=>setFiltroTipo('all')} style={{padding:'5px 12px',borderRadius:20,border:'none',cursor:'pointer',fontSize:12,fontWeight:700,background:filtroTipo==='all'?'#003366':'#F0F4FA',color:filtroTipo==='all'?'white':'#5A7090'}}>Todos</button>
+          {Object.entries(TIPO_LABEL).map(([t,l])=>(
+            <button key={t} onClick={()=>setFiltroTipo(t)} style={{padding:'5px 12px',borderRadius:20,border:'none',cursor:'pointer',fontSize:12,fontWeight:700,background:filtroTipo===t?TIPO_COLOR[t]:'#F0F4FA',color:filtroTipo===t?'white':'#5A7090'}}>
+              {TIPO_ICON[t]} {l}
+            </button>
+          ))}
+        </div>
+        <div style={{display:'flex',flexDirection:'column',gap:8}}>
+          {visibleF.map((item,i)=>{
+            const c=TIPO_COLOR[item.tipo]||'#374151';
+            const overdue=item.diff<0; const hot=item.diff>=0&&item.diff<=7;
+            return (
+              <div key={i} style={{background:overdue?'#FEF2F2':hot?'#FFF7ED':'white',border:`1.5px solid ${overdue?'#FECACA':hot?'#FED7AA':'#E8EEF8'}`,borderLeft:`4px solid ${c}`,borderRadius:10,padding:'11px 14px',display:'flex',gap:12,alignItems:'center'}}>
+                <div style={{fontSize:20,flexShrink:0}}>{TIPO_ICON[item.tipo]||'📅'}</div>
+                <div style={{flex:1,minWidth:0}}>
+                  <div style={{display:'flex',gap:8,alignItems:'center',flexWrap:'wrap',marginBottom:2}}>
+                    <span style={{fontWeight:800,color:c,fontSize:13}}>{item.titulo}</span>
+                    <span style={{background:c+'18',color:c,borderRadius:20,padding:'2px 7px',fontSize:10,fontWeight:700}}>{item.recurrente}</span>
                   </div>
-                  <div style={{fontSize:14,fontWeight:800,color:'#1A2D4A',marginBottom:2}}>{f.nombre}</div>
-                  <div style={{fontSize:11,color:'#8090A0'}}>{f.nota}</div>
+                  <div style={{fontSize:12,color:'#5A7090'}}>{item.subtitulo}</div>
+                </div>
+                <div style={{textAlign:'right',flexShrink:0}}>
+                  <div style={{fontSize:11,color:'#8090A0',marginBottom:4}}>{fmtES(item.fecha)}</div>
+                  <CountdownBadge diff={item.diff}/>
                 </div>
               </div>
-            ))}
-          </div>
+            );
+          })}
+        </div>
+      </>)}
 
-          <div style={{background:'#EFF6FF',borderRadius:10,padding:'12px 16px',fontSize:12,color:'#1D4ED8',lineHeight:1.7}}>
-            <strong>⚠️ Nota legal:</strong> Los días feriados son pagados y de descanso obligatorio.
-            Si se trabaja en día feriado, se debe pagar doble (Art. 203 Código de Trabajo).
-            Los feriados que caen en domingo se trasladan al lunes inmediato siguiente, excepto los inamovibles.
-          </div>
-
-          <div style={{marginTop:12,display:'flex',gap:16,fontSize:12}}>
-            <div style={{display:'flex',alignItems:'center',gap:6}}>
-              <div style={{width:16,height:16,borderRadius:3,background:'#DC2626'}}></div>
-              <span style={{color:'#5A7090'}}>Inamovible (no se traslada)</span>
+      {tab==='tss' && (<>
+        <div style={{background:'#F5F3FF',border:'1.5px solid #A78BFA',borderRadius:12,padding:'14px 18px',marginBottom:16}}>
+          <div style={{fontWeight:800,color:'#6B21A8',marginBottom:4,fontSize:14}}>🏦 Calendario TSS 2026 — Fechas Oficiales (sin recargo)</div>
+          <div style={{fontSize:13,color:'#5B21B6',lineHeight:1.7}}>AFP: empleado 2.87% + empleador 7.10% · SFS: empleado 3.04% + empleador 7.09% · SRL: empleador 1.20% · INFOTEP: empleador 1%</div>
+          {nextTSS && (
+            <div style={{marginTop:10,background:'white',borderRadius:8,padding:'10px 14px',display:'flex',justifyContent:'space-between',alignItems:'center'}}>
+              <span style={{fontWeight:700,color:'#6B21A8'}}>Próximo: {nextTSS.mes}</span>
+              <div style={{display:'flex',gap:10,alignItems:'center'}}>
+                <span style={{color:'#5A7090',fontSize:13}}>{fmtES(nextTSS.limite)}</span>
+                <CountdownBadge diff={diasPara(nextTSS.limite)}/>
+              </div>
             </div>
-            <div style={{display:'flex',alignItems:'center',gap:6}}>
-              <div style={{width:16,height:16,borderRadius:3,background:'#003366'}}></div>
-              <span style={{color:'#5A7090'}}>Trasladado al lunes más cercano</span>
-            </div>
-          </div>
-        </>
-      )}
+          )}
+        </div>
+        <div className="card" style={{padding:0,overflow:'hidden'}}>
+          <table style={{width:'100%',borderCollapse:'collapse'}}>
+            <thead><tr style={{background:'#6B21A8',color:'white'}}>
+              <th style={{padding:'10px 16px',textAlign:'left',fontSize:12}}>Mes de Contribución</th>
+              <th style={{padding:'10px 16px',textAlign:'center',fontSize:12}}>Fecha Límite sin Recargo</th>
+              <th style={{padding:'10px 16px',textAlign:'center',fontSize:12}}>Estado</th>
+            </tr></thead>
+            <tbody>
+              {TSS_2026.map((t,i)=>{
+                const diff=diasPara(t.limite); const pasado=diff<-3;
+                return (<tr key={i} style={{background:pasado?'#FAFAFA':i%2===0?'white':'#F8F5FF',borderBottom:'1px solid #EDE9FE',opacity:pasado?0.55:1}}>
+                  <td style={{padding:'11px 16px',fontWeight:600,fontSize:13,color:'#1A2D4A'}}>{t.mes}</td>
+                  <td style={{padding:'11px 16px',textAlign:'center',fontSize:13,color:'#5A7090'}}>{fmtES(t.limite)}</td>
+                  <td style={{padding:'11px 16px',textAlign:'center'}}>{pasado?<span style={{color:'#9CA3AF',fontSize:12}}>✓ Completado</span>:<CountdownBadge diff={diff}/>}</td>
+                </tr>);
+              })}
+            </tbody>
+          </table>
+        </div>
+      </>)}
 
-      {tab === 'fechas' && (
-        <div style={{display:'flex',flexDirection:'column',gap:12}}>
-          {FECHAS_IMPORTANTES.map((item,i)=>(
-            <div key={i} style={{background:item.bg,borderRadius:12,padding:'16px 20px',
-              border:`1px solid ${item.color}22`,display:'flex',gap:14,alignItems:'flex-start'}}>
-              <div style={{fontSize:24,flexShrink:0,marginTop:2}}>{item.icono}</div>
+      {tab==='feriados' && (<>
+        <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:12,marginBottom:16}}>
+          {FERIADOS_2026.map((f,i)=>(
+            <div key={i} style={{background:'white',border:'1.5px solid #E8EEF8',borderRadius:12,padding:'13px 15px',display:'flex',gap:12,alignItems:'center'}}>
+              <div style={{width:40,height:40,borderRadius:10,background:'#FFF0F0',display:'flex',alignItems:'center',justifyContent:'center',fontSize:16,flexShrink:0}}>📅</div>
               <div>
-                <div style={{fontWeight:800,fontSize:14,color:item.color,marginBottom:4}}>{item.titulo}</div>
-                <div style={{fontSize:13,color:'#4A5568',lineHeight:1.7}}>{item.desc}</div>
+                <div style={{fontSize:12,fontWeight:700,color:'#DC2626',marginBottom:1}}>{f.f}</div>
+                <div style={{fontWeight:700,fontSize:13,color:'#1A2D4A',marginBottom:1}}>{f.n}</div>
+                {f.nota && <div style={{fontSize:11,color:'#8090A0'}}>{f.nota}</div>}
               </div>
             </div>
           ))}
         </div>
-      )}
+        <div style={{background:'#EFF6FF',border:'1px solid #BFDBFE',borderRadius:10,padding:'11px 15px',fontSize:12,color:'#1E40AF'}}>
+          📌 Feriados en domingo se trasladan al lunes siguiente (excepto inamovibles) · Trabajar en feriado = <strong>doble salario obligatorio</strong>
+        </div>
+      </>)}
+    </div>
+  );
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
+function Dgt3({ employees }) {
+  const anio = new Date().getFullYear();
+  const [pdfLoading, setPdfLoading] = useState(false);
+  const [search, setSearch] = useState('');
+
+  const rd = n => 'RD$' + Number(n).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+  function calcAntigüedad(emp) {
+    const raw = emp.hireDate || emp.startDate || '';
+    if (!raw) return '—';
+    let ini;
+    if (raw.includes('/')) { const [d,m,y]=raw.split('/'); ini=new Date(`${y}-${m}-${d}T12:00:00`); }
+    else ini = new Date(raw + 'T12:00:00');
+    const hoy = new Date();
+    const yrs = Math.floor((hoy - ini) / (365.25*86400000));
+    const mths = Math.floor(((hoy - ini) / (365.25*86400000) - yrs) * 12);
+    if (yrs > 0) return yrs + ' año' + (yrs>1?'s':'') + (mths>0?', '+mths+' mes'+(mths>1?'es':''):'');
+    return mths + ' mes' + (mths!==1?'es':'');
+  }
+
+  function fmtDate(raw) {
+    if (!raw) return '—';
+    let d;
+    if (raw.includes('/')) { const [dd,mm,yy]=raw.split('/'); d=new Date(`${yy}-${mm}-${dd}T12:00:00`); }
+    else d = new Date(raw+'T12:00:00');
+    return d.toLocaleDateString('es-DO',{day:'2-digit',month:'2-digit',year:'numeric'});
+  }
+
+  function getTurno(emp) {
+    const j = (emp.jornada||'').toLowerCase();
+    if (j.includes('diurna')) return 'Diurna';
+    if (j.includes('nocturna')) return 'Nocturna';
+    if (j.includes('mixto') || j.includes('mix')) return 'Mixto';
+    return emp.jornada || '—';
+  }
+
+  const filtered = employees.filter(e =>
+    !search || e.name.toLowerCase().includes(search.toLowerCase())
+  );
+
+  function descargarPDF() {
+    setPdfLoading(true);
+    try {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF({ unit:'mm', format:'a4', orientation:'landscape' });
+      const W=297, M=10; let y=14;
+
+      // Logo + Header
+      try { doc.addImage(LOGO_TEA,'PNG',W/2-12,y,24,12); y+=14; } catch(e){ y+=4; }
+      doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(0,34,102);
+      doc.text('TRANSPORTE EMPRESARIAL AMALFI SRL', W/2, y, {align:'center'}); y+=6;
+      doc.setFontSize(11); doc.setFont('helvetica','normal'); doc.setTextColor(60,60,60);
+      doc.text('PLANILLA DE PERSONAL FIJO — DGT-3', W/2, y, {align:'center'}); y+=5;
+      doc.setFontSize(9);
+      doc.text(`RNC: 131-07998-9  ·  Art. 159 y 161 Código de Trabajo  ·  Reglamento 258/93 Arts. 15-16  ·  Año ${anio}`, W/2, y, {align:'center'}); y+=3;
+      doc.text(`Fecha de emisión: ${new Date().toLocaleDateString('es-DO',{day:'2-digit',month:'2-digit',year:'numeric'})}  ·  Total de empleados: ${employees.length}`, W/2, y, {align:'center'}); y+=6;
+
+      doc.setDrawColor(0,34,102); doc.setLineWidth(0.7);
+      doc.line(M, y, W-M, y); y+=5;
+
+      // Table headers
+      const cols = [
+        {label:'#',            x:M+1,  w:7},
+        {label:'Cédula',       x:M+8,  w:22},
+        {label:'Nombre Completo', x:M+30, w:48},
+        {label:'Cargo / Ocupación', x:M+78, w:36},
+        {label:'Área',         x:M+114, w:22},
+        {label:'Salario',      x:M+136, w:24},
+        {label:'F. Ingreso',   x:M+160, w:22},
+        {label:'Antigüedad',   x:M+182, w:22},
+        {label:'Turno',        x:M+204, w:18},
+        {label:'F. Pago',      x:M+222, w:22},
+        {label:'Tipo Contrato',x:M+244, w:30},
+        {label:'NSS',          x:M+274, w:16},
+      ];
+
+      doc.setFillColor(0,34,102); doc.rect(M, y-4, W-2*M, 8,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(7.5); doc.setTextColor(255,255,255);
+      cols.forEach(c => doc.text(c.label, c.x, y));
+      y += 6;
+
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(0,0,0);
+
+      const sorted = [...employees].sort((a,b)=>a.name.localeCompare(b.name));
+      sorted.forEach((emp,i) => {
+        if (y > 185) { doc.addPage(); y = 16; }
+        if (i%2===0){doc.setFillColor(245,248,255);doc.rect(M,y-3.5,W-2*M,7,'F');}
+
+        const cedFmt = emp.cedula ? emp.cedula.replace(/(\d{3})(\d+)(\d{1})/,'$1-$2-$3') : '—';
+        const nm = emp.name.length>34 ? emp.name.substring(0,32)+'…' : emp.name;
+        const pos = (emp.position||'—').length>22 ? (emp.position||'').substring(0,20)+'…' : (emp.position||'—');
+
+        doc.text(String(i+1),     M+4,    y, {align:'right'});
+        doc.text(emp.cedula||'—', M+8,    y);
+        doc.setFont('helvetica','bold');
+        doc.text(nm,              M+30,   y);
+        doc.setFont('helvetica','normal');
+        doc.text(pos,             M+78,   y);
+        doc.text(emp.area||'—',   M+114,  y);
+        doc.setFont('helvetica','bold'); doc.setTextColor(0,34,102);
+        doc.text(rd(emp.salary||0), M+158, y, {align:'right'});
+        doc.setFont('helvetica','normal'); doc.setTextColor(0,0,0);
+        doc.text(fmtDate(emp.hireDate||emp.startDate), M+160, y);
+        doc.text(calcAntigüedad(emp), M+182, y);
+        doc.text(getTurno(emp),   M+204,  y);
+        doc.text(emp.payFrequency||'—', M+222, y);
+        doc.text(emp.contractType||'Tiempo Indefinido', M+244, y);
+        doc.text(emp.nss||'—',    M+274,  y);
+        y += 7;
+      });
+
+      // Totals
+      y += 2;
+      doc.setFillColor(0,34,102); doc.rect(M,y-4,W-2*M,9,'F');
+      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(255,255,255);
+      const totalSal = employees.reduce((s,e)=>s+(parseFloat(e.salary)||0),0);
+      doc.text(`Total empleados: ${employees.length}`, M+10, y);
+      doc.text(`Masa salarial total: ${rd(totalSal)}`, W/2, y, {align:'center'});
+      doc.text('Ministerio de Trabajo — DGT-3', W-M-10, y, {align:'right'});
+      y += 14;
+
+      // Signature lines
+      doc.setDrawColor(100,100,100); doc.setLineWidth(0.4);
+      const sigY = y + 15;
+      [[M+20, 'Representante Legal'],[W/2-30, 'Encargado de Recursos Humanos'],[W-M-80, 'Sello y Firma Ministerio de Trabajo']].forEach(([x, label]) => {
+        doc.line(x, sigY, x+60, sigY);
+        doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(80,80,80);
+        doc.text(label, x+30, sigY+4, {align:'center'});
+      });
+
+      doc.setFontSize(7); doc.setTextColor(130,130,130);
+      doc.text(`Portal de renovación: https://ovi.mt.gob.do  ·  Plazo anual: 15 de enero  ·  Arts. 159 y 161 Código de Trabajo  ·  Reglamento 258/93`, W/2, 205, {align:'center'});
+
+      doc.save(`DGT3_PersonalFijo_${anio}_Amalfi.pdf`);
+    } finally { setPdfLoading(false); }
+  }
+
+  const sorted = [...filtered].sort((a,b) => a.name.localeCompare(b.name));
+  const totalSal = employees.reduce((s,e)=>s+(parseFloat(e.salary)||0),0);
+
+  return (
+    <div style={{maxWidth:1000,margin:'0 auto',padding:24}}>
+      <h2 style={{fontFamily:'Montserrat',color:'#003366',marginBottom:4}}>📋 Planilla Personal Fijo — DGT-3</h2>
+      <p style={{fontSize:13,color:'#5A7090',marginBottom:16}}>
+        Ministerio de Trabajo · Art. 159 y 161 Código de Trabajo · Reglamento 258/93 Arts. 15-16
+      </p>
+
+      {/* Alert card */}
+      <div style={{background:'#FFF7ED',border:'2px solid #F97316',borderRadius:12,padding:'14px 18px',
+        marginBottom:20,display:'flex',gap:14,alignItems:'center'}}>
+        <div style={{fontSize:28}}>⚠️</div>
+        <div>
+          <div style={{fontWeight:800,color:'#9A3412',fontSize:14,marginBottom:3}}>
+            Renovación anual obligatoria — Plazo: 15 de enero de cada año
+          </div>
+          <div style={{fontSize:13,color:'#7C2D12',lineHeight:1.6}}>
+            Registra o renueva en <strong>https://ovi.mt.gob.do</strong> · Adquiere el formulario en la División de Tesorería del Ministerio de Trabajo o con tarjeta de crédito/débito en línea · Introduce el PIN + código de aprobación para validar.
+          </div>
+        </div>
+      </div>
+
+      {/* Stats */}
+      <div style={{display:'grid',gridTemplateColumns:'repeat(3,1fr)',gap:12,marginBottom:20}}>
+        {[
+          ['👥 Total Empleados', employees.length, '#003366'],
+          ['💰 Masa Salarial', rd(totalSal), '#1A6B3A'],
+          ['📅 Próxima renovación', '15 Ene ' + (new Date().getFullYear()+1), '#DC2626'],
+        ].map(([label,val,color])=>(
+          <div key={label} className="card" style={{textAlign:'center',padding:'14px 10px'}}>
+            <div style={{fontSize:12,color:'#5A7090',marginBottom:4}}>{label}</div>
+            <div style={{fontSize:18,fontWeight:800,color}}>{val}</div>
+          </div>
+        ))}
+      </div>
+
+      {/* Actions */}
+      <div style={{display:'flex',gap:12,marginBottom:16,alignItems:'center',flexWrap:'wrap'}}>
+        <input value={search} onChange={e=>setSearch(e.target.value)}
+          placeholder="🔍 Buscar empleado..."
+          style={{flex:1,minWidth:200,padding:'9px 14px',border:'1.5px solid #D0DCF0',
+            borderRadius:10,fontSize:13}}/>
+        <button onClick={descargarPDF} disabled={pdfLoading}
+          style={{background:'#003366',color:'white',border:'none',borderRadius:10,
+            padding:'10px 22px',fontWeight:700,cursor:'pointer',fontSize:13,whiteSpace:'nowrap'}}>
+          {pdfLoading ? '⏳ Generando...' : '⬇️ Descargar DGT-3 PDF'}
+        </button>
+        <a href="https://ovi.mt.gob.do" target="_blank" rel="noreferrer"
+          style={{background:'#DC2626',color:'white',textDecoration:'none',borderRadius:10,
+            padding:'10px 18px',fontWeight:700,fontSize:13,whiteSpace:'nowrap'}}>
+          🌐 Portal ovi.mt.gob.do
+        </a>
+      </div>
+
+      {/* Table */}
+      <div className="card" style={{padding:0,overflow:'auto'}}>
+        <table style={{width:'100%',borderCollapse:'collapse',minWidth:900}}>
+          <thead>
+            <tr style={{background:'#003366',color:'white'}}>
+              {['#','Cédula','Nombre Completo','Cargo / Ocupación','Área','Salario','F. Ingreso','Antigüedad','Turno','F. Pago','NSS'].map(h=>(
+                <th key={h} style={{padding:'10px 10px',textAlign:['Salario'].includes(h)?'right':'left',
+                  fontSize:11,fontWeight:700,whiteSpace:'nowrap',color:h==='Salario'?'#FFD700':'white'}}>{h}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {sorted.map((emp,i)=>(
+              <tr key={emp.id} style={{background:i%2===0?'white':'#F8FAFF',borderBottom:'1px solid #E8EEF8'}}>
+                <td style={{padding:'9px 10px',fontSize:12,color:'#8090A0',textAlign:'center'}}>{i+1}</td>
+                <td style={{padding:'9px 10px',fontSize:12,fontFamily:'monospace',color:'#5A7090'}}>{emp.cedula||'—'}</td>
+                <td style={{padding:'9px 10px',fontSize:13,fontWeight:700,color:'#1A2D4A'}}>{emp.name}</td>
+                <td style={{padding:'9px 10px',fontSize:12,color:'#5A7090'}}>{emp.position||'—'}</td>
+                <td style={{padding:'9px 10px',fontSize:12,color:'#5A7090'}}>{emp.area||'—'}</td>
+                <td style={{padding:'9px 10px',fontSize:13,fontWeight:700,color:'#003366',textAlign:'right'}}>{rd(emp.salary||0)}</td>
+                <td style={{padding:'9px 10px',fontSize:12,color:'#5A7090',whiteSpace:'nowrap'}}>{fmtDate(emp.hireDate||emp.startDate)}</td>
+                <td style={{padding:'9px 10px',fontSize:12,color:'#5A7090'}}>{calcAntigüedad(emp)}</td>
+                <td style={{padding:'9px 10px',fontSize:12,color:'#5A7090'}}>{getTurno(emp)}</td>
+                <td style={{padding:'9px 10px',fontSize:12,color:'#5A7090',whiteSpace:'nowrap'}}>{emp.payFrequency||'—'}</td>
+                <td style={{padding:'9px 10px',fontSize:12,fontFamily:'monospace',color:'#5A7090'}}>{emp.nss||'—'}</td>
+              </tr>
+            ))}
+          </tbody>
+          <tfoot>
+            <tr style={{background:'#003366',color:'white'}}>
+              <td colSpan={5} style={{padding:'10px',fontWeight:800,fontSize:13}}>TOTAL — {employees.length} empleados</td>
+              <td style={{padding:'10px',textAlign:'right',fontSize:14,fontWeight:800,color:'#FFD700'}}>{rd(totalSal)}</td>
+              <td colSpan={5} style={{padding:'10px',fontSize:11,color:'#A0C4E8'}}>Masa salarial mensual · Planilla DGT-3 · Ministerio de Trabajo RD</td>
+            </tr>
+          </tfoot>
+        </table>
+      </div>
+
+      <div style={{marginTop:12,fontSize:11,color:'#8090A0',textAlign:'center',lineHeight:1.8}}>
+        Portal de renovación: <strong>https://ovi.mt.gob.do</strong> · Compra el formulario en Tesorería del Ministerio o en línea con tarjeta · Introduce el PIN + código de aprobación para validar
+      </div>
     </div>
   );
 }
