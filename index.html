@@ -1877,42 +1877,64 @@ function Reportes({ employees, periods, deletePeriod }) {
   // Exportar planilla TSS como CSV
   const exportTSS = (selectedPeriod) => {
     const p = selectedPeriod || { period: { label: "General", year: 2026 }, rows: periods.flatMap(p=>p.rows) };
-    const data = p.rows || rows;
+    const rawRows = p.rows || rows;
+
+    // Consolidar por cédula — suma ambas quincenas en una sola fila por empleado
+    const byEmp = {};
+    rawRows.forEach(({emp, calc}) => {
+      const ced = emp.cedula;
+      if (!byEmp[ced]) byEmp[ced] = {
+        emp,
+        salario:0, afpWorker:0, sfsWorker:0, isrPeriodo:0,
+        totalDeductions:0, totalAPagar:0,
+        afpEmpresa:0, sfsEmpresa:0, srlEmpresa:0, infotep:0, costEmpresa:0
+      };
+      const t = byEmp[ced];
+      t.salario        += calc.periodSalary;
+      t.afpWorker      += calc.afpWorker;
+      t.sfsWorker      += calc.sfsWorker;
+      t.isrPeriodo     += calc.isrPeriodo;
+      t.totalDeductions+= calc.totalDeductions;
+      t.totalAPagar    += calc.totalAPagar;
+      t.afpEmpresa     += calc.afpEmpresa;
+      t.sfsEmpresa     += calc.sfsEmpresa;
+      t.srlEmpresa     += calc.srlEmpresa;
+      t.infotep        += calc.infotep;
+      t.costEmpresa    += calc.costEmpresa;
+    });
+    const data = Object.values(byEmp);
+
     const headers = [
       "No.","Cédula","Nombre Completo","Cargo","Tipo Contrato",
       "Salario Mensual","Salario Período",
       "AFP Trabajador (2.87%)","SFS Trabajador (3.04%)","ISR Período",
       "Total Descuentos Empleado","Salario Neto",
-      "AFP Empresa (7.10%)","SFS Empresa (7.09%)","SRL Empresa (~1.1%)","INFOTEP (1%)",
+      "AFP Empresa (7.10%)","SFS Empresa (7.09%)","SRL Empresa (1.20%)","INFOTEP (1%)",
       "Total Aportes Empresa","Costo Total"
     ];
-    const csvRows = data.map(({emp,calc},i) => {
-      const e = emp || calc;
-      const c = calc;
-      return [
-        i+1, emp.cedula, emp.name, emp.position, emp.contractType,
-        emp.salary.toFixed(2), c.periodSalary.toFixed(2),
-        c.afpWorker.toFixed(2), c.sfsWorker.toFixed(2), c.isrPeriodo.toFixed(2),
-        c.totalDeductions.toFixed(2), c.totalAPagar.toFixed(2),
-        c.afpEmpresa.toFixed(2), c.sfsEmpresa.toFixed(2), c.srlEmpresa.toFixed(2), c.infotep.toFixed(2),
-        (c.afpEmpresa+c.sfsEmpresa+c.srlEmpresa+c.infotep).toFixed(2),
-        c.costEmpresa.toFixed(2)
-      ].join(",");
-    });
+    const csvRows = data.map((r,i) => [
+      i+1, r.emp.cedula, r.emp.name, r.emp.position, r.emp.contractType,
+      r.emp.salary.toFixed(2), r.salario.toFixed(2),
+      r.afpWorker.toFixed(2), r.sfsWorker.toFixed(2), r.isrPeriodo.toFixed(2),
+      r.totalDeductions.toFixed(2), r.totalAPagar.toFixed(2),
+      r.afpEmpresa.toFixed(2), r.sfsEmpresa.toFixed(2), r.srlEmpresa.toFixed(2), r.infotep.toFixed(2),
+      (r.afpEmpresa+r.sfsEmpresa+r.srlEmpresa+r.infotep).toFixed(2),
+      r.costEmpresa.toFixed(2)
+    ].join(","));
     const totRow = [
       "TOTAL","","","","","",
-      data.reduce((s,r)=>s+r.calc.periodSalary,0).toFixed(2),
-      data.reduce((s,r)=>s+r.calc.afpWorker,0).toFixed(2),
-      data.reduce((s,r)=>s+r.calc.sfsWorker,0).toFixed(2),
-      data.reduce((s,r)=>s+r.calc.isrPeriodo,0).toFixed(2),
-      data.reduce((s,r)=>s+r.calc.totalDeductions,0).toFixed(2),
-      data.reduce((s,r)=>s+r.calc.totalAPagar,0).toFixed(2),
-      data.reduce((s,r)=>s+r.calc.afpEmpresa,0).toFixed(2),
-      data.reduce((s,r)=>s+r.calc.sfsEmpresa,0).toFixed(2),
-      data.reduce((s,r)=>s+r.calc.srlEmpresa,0).toFixed(2),
-      data.reduce((s,r)=>s+r.calc.infotep,0).toFixed(2),
-      data.reduce((s,r)=>s+r.calc.afpEmpresa+r.calc.sfsEmpresa+r.calc.srlEmpresa+r.calc.infotep,0).toFixed(2),
-      data.reduce((s,r)=>s+r.calc.costEmpresa,0).toFixed(2),
+      data.reduce((s,r)=>s+r.salario,0).toFixed(2),
+      data.reduce((s,r)=>s+r.afpWorker,0).toFixed(2),
+      data.reduce((s,r)=>s+r.sfsWorker,0).toFixed(2),
+      data.reduce((s,r)=>s+r.isrPeriodo,0).toFixed(2),
+      data.reduce((s,r)=>s+r.totalDeductions,0).toFixed(2),
+      data.reduce((s,r)=>s+r.totalAPagar,0).toFixed(2),
+      data.reduce((s,r)=>s+r.afpEmpresa,0).toFixed(2),
+      data.reduce((s,r)=>s+r.sfsEmpresa,0).toFixed(2),
+      data.reduce((s,r)=>s+r.srlEmpresa,0).toFixed(2),
+      data.reduce((s,r)=>s+r.infotep,0).toFixed(2),
+      data.reduce((s,r)=>s+r.afpEmpresa+r.sfsEmpresa+r.srlEmpresa+r.infotep,0).toFixed(2),
+      data.reduce((s,r)=>s+r.costEmpresa,0).toFixed(2),
     ].join(",");
     const meta = [
       `# PLANILLA TSS - TRANSPORTE AMALFI`,
