@@ -513,28 +513,39 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
   // ── Restaurar nóminas febrero 2026 ────────────────────────────────────────
   const restoreNominasFebrero = async () => {
     if (!window.confirm('¿Restaurar las nóminas de febrero 2026 (1ra y 2da quincena)?\nEsto sobrescribirá datos existentes de esos períodos.')) return;
-    const p1 = ALL_PERIODS.find(p => p.id === '2026-2-1'); // 1 Feb - 15 Feb
-    const p2 = ALL_PERIODS.find(p => p.id === '2026-2-2'); // 16 Feb - 28 Feb
-    // Q1: todos con salario base solamente
-    // Q2: extras según nómina procesada (vacaciones cotizable, transporte no cotizable)
-    const extrasQ2 = {
-      '22900069414': [{type:'transporte_extra', amount:15600,    desc:'Servicios de Transporte Extra'}],
-      '07600128248': [{type:'transporte_extra', amount:5900,     desc:'Servicios de Transporte Extra'}],
-      '40225914395': [{type:'vacaciones',       amount:6894.46,  desc:'Vacaciones'},{type:'transporte_extra',amount:14000,desc:'Servicios de Transporte Extra'}],
-      '40224305553': [{type:'transporte_extra', amount:1700,     desc:'Servicios de Transporte Extra'}],
-      '00117419952': [{type:'transporte_extra', amount:8500,     desc:'Servicios de Transporte Extra'}],
-      '00108633728': [{type:'transporte_extra', amount:500,      desc:'Servicios de Transporte Extra'}],
-      '00800260077': [{type:'vacaciones',       amount:2248.62,  desc:'Vacaciones'},{type:'transporte_extra',amount:21250,desc:'Servicios de Transporte Extra'}],
-      '40215784451': [{type:'transporte_extra', amount:9700,     desc:'Servicios de Transporte Extra'}],
-      '00108444787': [{type:'vacaciones',       amount:4260.22,  desc:'Vacaciones'},{type:'transporte_extra',amount:353.40,desc:'Servicios de Transporte Extra'}],
-      '07600161546': [{type:'transporte_extra', amount:12100,    desc:'Servicios de Transporte Extra'}],
-      '40222131076': [{type:'vacaciones',       amount:3499.79,  desc:'Vacaciones'},{type:'transporte_extra',amount:20500,desc:'Servicios de Transporte Extra'}],
-      '22500222868': [{type:'transporte_extra', amount:12900,    desc:'Servicios de Transporte Extra'}],
-      '22900254974': [{type:'vacaciones',       amount:5581.20,  desc:'Vacaciones'}],
+    const p1 = ALL_PERIODS.find(p => p.id === '2026-2-1');
+    const p2 = ALL_PERIODS.find(p => p.id === '2026-2-2');
+    // Santo y Obispo tenían salario 18,067.80 en febrero (el aumento a 18,421.20 es desde marzo)
+    const FEB_SALARIES = { '00108444787': 18067.80, '00108633728': 18067.80 };
+    const empFeb = (e) => FEB_SALARIES[e.cedula] ? {...e, salary: FEB_SALARIES[e.cedula]} : e;
+    // Q1 (1-15 Feb): vacaciones cotizables + transporte no cotizable
+    const extrasQ1 = {
+      '22900069414': [{type:'transporte_extra', amount:11500,   desc:'Servicios de Transporte Extra'}],
+      '40225914395': [{type:'vacaciones',       amount:6894.46, desc:'Vacaciones'},{type:'transporte_extra',amount:13500,desc:'Servicios de Transporte Extra'}],
+      '00800260077': [{type:'vacaciones',       amount:2248.62, desc:'Vacaciones'},{type:'transporte_extra',amount:15350,desc:'Servicios de Transporte Extra'}],
+      '00108444787': [{type:'vacaciones',       amount:4613.62, desc:'Vacaciones'}],
+      '07600161546': [{type:'transporte_extra', amount:2000,    desc:'Servicios de Transporte Extra'}],
+      '40222131076': [{type:'vacaciones',       amount:3499.79, desc:'Vacaciones'},{type:'transporte_extra',amount:20000,desc:'Servicios de Transporte Extra'}],
+      '22500222868': [{type:'transporte_extra', amount:9000,    desc:'Servicios de Transporte Extra'}],
+      '22900254974': [{type:'vacaciones',       amount:831.20,  desc:'Vacaciones'},{type:'transporte_extra',amount:4750,desc:'Servicios de Transporte Extra'}],
     };
-    const makeRows = (extraMap, deducMap={}) =>
-      employees.map(e => ({ emp:e, calc:calcPayroll(e, extraMap[e.cedula]||[], deducMap[e.cedula]||[]) }));
-    const period1 = { periodId:'periodo-2026-2-1', period:p1, createdAt:'2026-03-04T10:00:00.000Z', rows:makeRows({}) };
+    // Q2 (16-28 Feb): solo transporte
+    const extrasQ2 = {
+      '22900069414': [{type:'transporte_extra', amount:4100,    desc:'Servicios de Transporte Extra'}],
+      '07600128248': [{type:'transporte_extra', amount:5900,    desc:'Servicios de Transporte Extra'}],
+      '40225914395': [{type:'transporte_extra', amount:500,     desc:'Servicios de Transporte Extra'}],
+      '40224305553': [{type:'transporte_extra', amount:1700,    desc:'Servicios de Transporte Extra'}],
+      '00117419952': [{type:'transporte_extra', amount:8500,    desc:'Servicios de Transporte Extra'}],
+      '00108633728': [{type:'transporte_extra', amount:500,     desc:'Servicios de Transporte Extra'}],
+      '00800260077': [{type:'transporte_extra', amount:5900,    desc:'Servicios de Transporte Extra'}],
+      '40215784451': [{type:'transporte_extra', amount:9700,    desc:'Servicios de Transporte Extra'}],
+      '07600161546': [{type:'transporte_extra', amount:10100,   desc:'Servicios de Transporte Extra'}],
+      '40222131076': [{type:'transporte_extra', amount:500,     desc:'Servicios de Transporte Extra'}],
+      '22500222868': [{type:'transporte_extra', amount:3900,    desc:'Servicios de Transporte Extra'}],
+    };
+    const makeRows = (extraMap) =>
+      employees.map(e => { const ef = empFeb(e); return { emp:ef, calc:calcPayroll(ef, extraMap[e.cedula]||[], []) }; });
+    const period1 = { periodId:'periodo-2026-2-1', period:p1, createdAt:'2026-03-04T10:00:00.000Z', rows:makeRows(extrasQ1) };
     const period2 = { periodId:'periodo-2026-2-2', period:p2, createdAt:'2026-03-04T10:30:00.000Z', rows:makeRows(extrasQ2) };
     await savePeriod(period1);
     await savePeriod(period2);
@@ -545,7 +556,7 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
     if(showToast) showToast('✅ Nóminas febrero 2026 restauradas');
   };
 
-  return (
+    return (
     <div className="app">
       <style>{CSS}</style>
       <header className="hdr">
