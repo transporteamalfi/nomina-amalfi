@@ -1185,7 +1185,7 @@ function NoveltyModal({ emp, mode, data, onSave, onClose }) {
       {mode === "deduction" && (
         <div style={{marginBottom:18}}>
           <div style={{fontSize:11,fontWeight:700,color:"#5A7090",textTransform:"uppercase",letterSpacing:1,marginBottom:10}}>🔒 Deducciones Automáticas (todas las nóminas)</div>
-          {[{l:"AFP — Fondo de Pensiones (2.87%)",v:calc.afpWorker},{l:"SFS — Seguro Familiar de Salud (3.04%)",v:calc.sfsWorker},...(calc.isrPeriodo>0?[{l:"ISR — Impuesto sobre la Renta (DGII)",v:calc.isrPeriodo}]:[])].map((s,i) => (
+          {[{l:"AFP — Fondo de Pensiones (2.87%)",v:calc.afpWorker},{l:"SFS — Seguro Familiar de Salud (3.04%)",v:calc.sfsWorker}].map((s,i) => (
             <div key={i} className="ni" style={{marginBottom:8}}>
               <div className="fjb"><span style={{fontWeight:700,fontSize:13}}>🔒 {s.l}</span><span className="badge bo" style={{fontSize:11}}>En todas las nóminas</span></div>
               <div className="dec" style={{fontWeight:700,marginTop:3,fontSize:13}}>Valor: {fmt(s.v)}</div>
@@ -1732,15 +1732,52 @@ function PayslipView({ data, periodLabel, periodYear, onBack }) {
 }
 
 
+// ─── TSS mensual — siempre sobre salario mensual completo (no quincenal) ───
+function calcTSS(emp) {
+  const sal = parseFloat(emp.salary) || 0;
+  const afpBase = Math.min(sal, RATES.AFP_TOPE);
+  const sfsBase = Math.min(sal, RATES.SFS_TOPE);
+  const srlBase = Math.min(sal, RATES.SRL_TOPE);
+  const afpWorker  = afpBase * RATES.AFP_WORKER;
+  const sfsWorker  = sfsBase * RATES.SFS_WORKER;
+  const afpEmpresa = afpBase * RATES.AFP_COMPANY;
+  const sfsEmpresa = sfsBase * RATES.SFS_COMPANY;
+  const srlEmpresa = srlBase * RATES.SRL_COMPANY;
+  const infotep    = sal     * RATES.INFOTEP;
+  return {
+    sal, afpWorker, sfsWorker, afpEmpresa, sfsEmpresa, srlEmpresa, infotep,
+    totalEmp:     afpWorker  + sfsWorker,
+    totalEmpresa: afpEmpresa + sfsEmpresa + srlEmpresa + infotep,
+    totalTSS:     afpWorker  + sfsWorker  + afpEmpresa + sfsEmpresa + srlEmpresa,
+    totalConInf:  afpWorker  + sfsWorker  + afpEmpresa + sfsEmpresa + srlEmpresa + infotep,
+  };
+}
+
 function Reportes({ employees, periods, deletePeriod }) {
   const [tssTab, setTssTab] = React.useState("resumen");
   const [confirmDelete, setConfirmDelete] = React.useState(null); // "resumen" | "planilla" | "historial"
+  // Para historial/nómina: usa calcPayroll (por período)
   const rows = employees.map(e => ({ emp: e, calc: calcPayroll(e,[],[]) }));
   const T = rows.reduce((s,{calc}) => ({
     afpW:s.afpW+calc.afpWorker, sfsW:s.sfsW+calc.sfsWorker, isr:s.isr+calc.isrPeriodo,
     afpE:s.afpE+calc.afpEmpresa, sfsE:s.sfsE+calc.sfsEmpresa, srl:s.srl+calc.srlEmpresa, inf:s.inf+calc.infotep,
     n:s.n+calc.totalAPagar, c:s.c+calc.costEmpresa
   }), {afpW:0,sfsW:0,isr:0,afpE:0,sfsE:0,srl:0,inf:0,n:0,c:0});
+  // Para PUP/Planilla TSS: siempre mensual (TSS se paga mensual sobre salario completo)
+  const tssRows = employees.map(e => ({ emp: e, tss: calcTSS(e) }));
+  const TTSS = tssRows.reduce((s,{tss}) => ({
+    sal:   s.sal   + tss.sal,
+    afpW:  s.afpW  + tss.afpWorker,
+    sfsW:  s.sfsW  + tss.sfsWorker,
+    afpE:  s.afpE  + tss.afpEmpresa,
+    sfsE:  s.sfsE  + tss.sfsEmpresa,
+    srl:   s.srl   + tss.srlEmpresa,
+    inf:   s.inf   + tss.infotep,
+    totEmp:    s.totEmp    + tss.totalEmp,
+    totEmpresa:s.totEmpresa+ tss.totalEmpresa,
+    totTSS:    s.totTSS    + tss.totalTSS,
+    totConInf: s.totConInf + tss.totalConInf,
+  }), {sal:0,afpW:0,sfsW:0,afpE:0,sfsE:0,srl:0,inf:0,totEmp:0,totEmpresa:0,totTSS:0,totConInf:0});
 
   // Exportar planilla TSS como CSV
   const exportTSS = (selectedPeriod) => {
@@ -2019,10 +2056,10 @@ function Reportes({ employees, periods, deletePeriod }) {
             {/* Resumen rápido */}
             <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:12,marginTop:18}}>
               {[
-                {l:"Total AFP (empleado+empresa)",v:T.afpW+T.afpE,c:"#86EFAC"},
-                {l:"Total SFS (empleado+empresa)",v:T.sfsW+T.sfsE,c:"#93C5FD"},
-                {l:"Total SRL empresa",v:T.srl,c:"#FCA5A5"},
-                {l:"INFOTEP empresa",v:T.inf,c:"#FDE68A"},
+                {l:"AFP total (trabajador + empleador)",v:TTSS.afpW+TTSS.afpE,c:"#86EFAC"},
+                {l:"SFS total (trabajador + empleador)",v:TTSS.sfsW+TTSS.sfsE,c:"#93C5FD"},
+                {l:"SRL empleador (1.20%)",v:TTSS.srl,c:"#FCA5A5"},
+                {l:"INFOTEP empleador (1%)",v:TTSS.inf,c:"#FDE68A"},
               ].map((s,i)=>(
                 <div key={i} style={{background:"rgba(255,255,255,.12)",borderRadius:9,padding:"12px 14px"}}>
                   <div style={{fontSize:11,opacity:.7,marginBottom:4}}>{s.l}</div>
@@ -2081,7 +2118,7 @@ function Reportes({ employees, periods, deletePeriod }) {
                   </tr>
                 </thead>
                 <tbody>
-                  {rows.map(({emp,calc},i) => (
+                  {tssRows.map(({emp,tss},i) => (
                     <tr key={emp.id}>
                       <td style={{color:"#8AA0BC",textAlign:"center"}}>{i+1}</td>
                       <td style={{fontFamily:"monospace",fontSize:11}}>{emp.cedula}</td>
@@ -2090,34 +2127,34 @@ function Reportes({ employees, periods, deletePeriod }) {
                         <div style={{fontSize:10,color:"#8AA0BC"}}>{emp.contractType}</div>
                       </td>
                       <td><span className="badge bb" style={{fontSize:10}}>{emp.position}</span></td>
-                      <td style={{fontWeight:600}}>{fmt(emp.salary)}</td>
-                      <td style={{color:"#1D4ED8",fontWeight:600,background:"#F8FBFF"}}>{fmt(calc.afpWorker)}</td>
-                      <td style={{color:"#1D4ED8",fontWeight:600,background:"#F8FBFF"}}>{fmt(calc.sfsWorker)}</td>
+                      <td style={{fontWeight:600}}>{fmt(tss.sal)}</td>
+                      <td style={{color:"#1D4ED8",fontWeight:600,background:"#F8FBFF"}}>{fmt(tss.afpWorker)}</td>
+                      <td style={{color:"#1D4ED8",fontWeight:600,background:"#F8FBFF"}}>{fmt(tss.sfsWorker)}</td>
                       <td style={{color:"#1D4ED8",fontWeight:600,background:"#F8FBFF"}}>
-                        {calc.isrPeriodo>0 ? fmt(calc.isrPeriodo) : <span className="tm">—</span>}
+                        <span className="tm">—</span>
                       </td>
-                      <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(calc.afpEmpresa)}</td>
-                      <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(calc.sfsEmpresa)}</td>
-                      <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(calc.srlEmpresa)}</td>
-                      <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(calc.infotep)}</td>
+                      <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(tss.afpEmpresa)}</td>
+                      <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(tss.sfsEmpresa)}</td>
+                      <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(tss.srlEmpresa)}</td>
+                      <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(tss.infotep)}</td>
                       <td style={{fontWeight:800,color:"#15803D",background:"#F0FDF4"}}>
-                        {fmt(calc.afpWorker+calc.sfsWorker+calc.afpEmpresa+calc.sfsEmpresa+calc.srlEmpresa+calc.infotep)}
+                        {fmt(tss.totalTSS)}
                       </td>
                     </tr>
                   ))}
                   {/* Fila de totales */}
-                  <tr style={{background:"#F0F4FA",fontWeight:800,fontSize:12}}>
-                    <td colSpan={4} style={{textAlign:"right",color:"#003366"}}>TOTALES →</td>
-                    <td style={{fontWeight:800}}>{fmt(employees.reduce((s,e)=>s+e.salary,0))}</td>
-                    <td style={{color:"#1D4ED8",background:"#F0F6FF"}}>{fmt(T.afpW)}</td>
-                    <td style={{color:"#1D4ED8",background:"#F0F6FF"}}>{fmt(T.sfsW)}</td>
-                    <td style={{color:"#1D4ED8",background:"#F0F6FF"}}>{fmt(T.isr)}</td>
-                    <td style={{color:"#6D28D9",background:"#F5F0FF"}}>{fmt(T.afpE)}</td>
-                    <td style={{color:"#6D28D9",background:"#F5F0FF"}}>{fmt(T.sfsE)}</td>
-                    <td style={{color:"#6D28D9",background:"#F5F0FF"}}>{fmt(T.srl)}</td>
-                    <td style={{color:"#6D28D9",background:"#F5F0FF"}}>{fmt(T.inf)}</td>
-                    <td style={{color:"#15803D",background:"#ECFDF5"}}>
-                      {fmt(T.afpW+T.sfsW+T.afpE+T.sfsE+T.srl+T.inf)}
+                  <tr style={{background:"#EEF3FA",fontWeight:800,fontSize:12,borderTop:"2px solid #003366"}}>
+                    <td colSpan={4} style={{textAlign:"right",color:"#003366",fontFamily:"Montserrat"}}>TOTALES →</td>
+                    <td style={{fontWeight:800,color:"#003366"}}>{fmt(TTSS.sal)}</td>
+                    <td style={{color:"#1D4ED8",background:"#EBF4FF"}}>{fmt(TTSS.afpW)}</td>
+                    <td style={{color:"#1D4ED8",background:"#EBF4FF"}}>{fmt(TTSS.sfsW)}</td>
+                    <td style={{color:"#9CA3AF",background:"#EBF4FF"}}>—</td>
+                    <td style={{color:"#6D28D9",background:"#F0EBFF"}}>{fmt(TTSS.afpE)}</td>
+                    <td style={{color:"#6D28D9",background:"#F0EBFF"}}>{fmt(TTSS.sfsE)}</td>
+                    <td style={{color:"#6D28D9",background:"#F0EBFF"}}>{fmt(TTSS.srl)}</td>
+                    <td style={{color:"#6D28D9",background:"#F0EBFF"}}>{fmt(TTSS.inf)}</td>
+                    <td style={{color:"#15803D",background:"#DCFCE7",fontFamily:"Montserrat",fontSize:13}}>
+                      {fmt(TTSS.totConInf)}
                     </td>
                   </tr>
                 </tbody>
