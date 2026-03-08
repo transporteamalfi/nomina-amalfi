@@ -11,9 +11,11 @@
 <!-- jsPDF (formularios DGII) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <!-- Firebase SDK v10 -->
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+<!-- SheetJS for Excel export -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://unpkg.com/firebase@10.7.1/firebase-app-compat.js"></script>
+<script src="https://unpkg.com/firebase@10.7.1/firebase-auth-compat.js"></script>
+<script src="https://unpkg.com/firebase@10.7.1/firebase-firestore-compat.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{font-family:"Segoe UI",system-ui,sans-serif;background:#F0F4FA}
@@ -2574,9 +2576,6 @@ function Formularios({ employees, periods }) {
 // ═══════════════════════════════════════════════════════════════════════════
 //  CALCULADORA DE PRESTACIONES LABORALES (Ley 16-92 / Código de Trabajo RD)
 // ═══════════════════════════════════════════════════════════════════════════
-</script>
-<script type="text/babel">
-
 function Prestaciones({ employees }) {
   const [step, setStep]         = useState(1); // 1=datos, 2=resultado
   const [empId, setEmpId]       = useState('');
@@ -3868,7 +3867,7 @@ function Calendario() {
     add(`${y}-11-30`,'Navidad — 1er Pago (50%)','Primer 50% de la regalía pascual (Art. 219 CT)','navidad','Anual');
     add(`${y}-12-20`,'Navidad — 2do Pago (50%)','Segundo 50% regalía pascual — plazo final 20 dic','navidad','Anual');
     return items.filter(i=>i.diff>=-3).sort((a,b)=>a.diff-b.diff);
-  }}
+  }
 
   const TIPO_COLOR={tss:'#6B21A8',isr:'#DC2626',dgii:'#0369A1',dgt:'#003366',nomina:'#1A6B3A',bonif:'#7B4F00',navidad:'#065F46',itbis:'#B45309',ecf:'#7C3AED'};
   const TIPO_ICON ={tss:'🏦',isr:'📋',dgii:'📊',dgt:'📋',nomina:'💵',bonif:'🏆',navidad:'🎄',itbis:'🧾',ecf:'⚡'};
@@ -4427,7 +4426,6 @@ function Root() {
 }
 
 ReactDOM.createRoot(document.getElementById('root')).render(<Root/>);
-
 </script>
 </body>
 </html>
