@@ -1954,6 +1954,218 @@ function Reportes({ employees, periods, deletePeriod }) {
     document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
   };
 
+  // ── Exportar Nómina Completa del Mes en Excel ─────────────────────────────
+  const exportNominaExcel = (mesData) => {
+    const INCOME_LABELS = {
+      comision:'Comisión', vacaciones:'Vacaciones', prima_nocturna:'Prima Nocturna',
+      horas_extra_35:'H.Extra 35%', horas_extra_100:'H.Extra 100%',
+      bonificacion:'Bonificación', transporte_extra:'Servicios Transp.Extra',
+      regalia_pascual:'Regalía Pascual', preaviso:'Preaviso',
+      cesantia:'Cesantía', otros_ingresos:'Otros Ingresos'
+    };
+    const DEDU_LABELS = {
+      inasistencia:'Inasistencia', licencia_no_remun:'Lic.No Remunerada',
+      licencia_medica:'Lic.Médica', pension_aliment:'Pensión Aliment.',
+      aporte_dep:'Aporte Depend.', aporte_voluntario:'AFP Voluntario',
+      incapacidad_rl:'Incap.Riesgo Lab.', deduc_ct:'Deduc.CT',
+      prestamo:'Préstamo Empresa', otros_descuentos:'Otras Deducciones'
+    };
+
+    // Construir filas consolidadas con detalle completo
+    const rawRows = mesData.periodos.flatMap(p => p.rows);
+    const byEmp = {};
+    rawRows.forEach(({emp, calc}) => {
+      const ced = emp.cedula;
+      if (!byEmp[ced]) byEmp[ced] = {
+        emp,
+        quincenas: [],
+        salario:0, tssBased:0, nonTss:0,
+        afpWorker:0, sfsWorker:0, isrPeriodo:0, extraDeducTotal:0,
+        totalDeductions:0, totalAPagar:0,
+        afpEmpresa:0, sfsEmpresa:0, srlEmpresa:0, infotep:0, costEmpresa:0,
+        incomeTotals:{}, deducTotals:{}
+      };
+      const t = byEmp[ced];
+      t.quincenas.push(calc.periodSalary);
+      t.salario        += calc.periodSalary;
+      t.tssBased       += calc.tssBased||0;
+      t.nonTss         += calc.nonTss||0;
+      t.afpWorker      += calc.afpWorker;
+      t.sfsWorker      += calc.sfsWorker;
+      t.isrPeriodo     += calc.isrPeriodo;
+      t.extraDeducTotal+= calc.extraDeducTotal||0;
+      t.totalDeductions+= calc.totalDeductions;
+      t.totalAPagar    += calc.totalAPagar;
+      t.afpEmpresa     += calc.afpEmpresa;
+      t.sfsEmpresa     += calc.sfsEmpresa;
+      t.srlEmpresa     += calc.srlEmpresa;
+      t.infotep        += calc.infotep;
+      t.costEmpresa    += calc.costEmpresa;
+      // Acumular extras por tipo
+      (calc.incomesExtra||[]).forEach(inc => {
+        t.incomeTotals[inc.type] = (t.incomeTotals[inc.type]||0) + inc.amount;
+      });
+      (calc.deductionsExtra||[]).forEach(ded => {
+        t.deducTotals[ded.type] = (t.deducTotals[ded.type]||0) + ded.amount;
+      });
+    });
+    const emps = Object.values(byEmp);
+
+    // Detectar qué tipos de ingreso/deducción realmente se usaron este mes
+    const incTypesUsed = [...new Set(emps.flatMap(e => Object.keys(e.incomeTotals)))];
+    const dedTypesUsed = [...new Set(emps.flatMap(e => Object.keys(e.deducTotals)))];
+
+    const XL = window.XLSX;
+    const wb = XL.utils.book_new();
+
+    // ── HOJA 1: NÓMINA MENSUAL COMPLETA ──────────────────────────────────────
+    const nPer = mesData.nPeriodos;
+    const metaRows = [
+      ['TRANSPORTE EMPRESARIAL AMALFI'],
+      [`NÓMINA MENSUAL — ${mesData.label.toUpperCase()}`],
+      [`Generado: ${new Date().toLocaleString('es-DO')}  |  Quincenas: ${nPer}  |  Empleados: ${emps.length}`],
+      ['Código Laboral RD | TSS Res.01-2025 | AFP 2.87%/7.10% | SFS 3.04%/7.09% | ISR 2026'],
+      [],
+    ];
+
+    // Cabecera de columnas
+    const hdr = [
+      'No.','Cédula','Nombre Completo','Cargo','Contrato','Sal.Mensual',
+      ...Array.from({length:nPer},(_,i)=>`${i===0?'1ra':'2da'} Quin.`),
+      'Total Salario',
+      ...incTypesUsed.map(t => INCOME_LABELS[t]||t),
+      'Total Ingresos Extras','TOTAL BRUTO',
+      'AFP Trabajador (2.87%)','SFS Trabajador (3.04%)','ISR Retenido',
+      ...dedTypesUsed.map(t => DEDU_LABELS[t]||t),
+      'Total Deducciones','NETO A PAGAR',
+      'AFP Empresa (7.10%)','SFS Empresa (7.09%)','SRL Empresa (1.20%)','INFOTEP (1%)',
+      'Total Aportes Empresa','COSTO TOTAL EMPRESA'
+    ];
+
+    const dataRows = emps.map((r,i) => {
+      const totalExtras = incTypesUsed.reduce((s,t)=>s+(r.incomeTotals[t]||0),0);
+      const totalDedExtra = dedTypesUsed.reduce((s,t)=>s+(r.deducTotals[t]||0),0);
+      return [
+        i+1, r.emp.cedula, r.emp.name, r.emp.position, r.emp.contractType,
+        +r.emp.salary.toFixed(2),
+        ...r.quincenas.map(q=>+q.toFixed(2)),
+        +r.salario.toFixed(2),
+        ...incTypesUsed.map(t=>+(r.incomeTotals[t]||0).toFixed(2)),
+        +totalExtras.toFixed(2),
+        +(r.salario+totalExtras).toFixed(2),
+        +r.afpWorker.toFixed(2), +r.sfsWorker.toFixed(2), +r.isrPeriodo.toFixed(2),
+        ...dedTypesUsed.map(t=>+(r.deducTotals[t]||0).toFixed(2)),
+        +r.totalDeductions.toFixed(2), +r.totalAPagar.toFixed(2),
+        +r.afpEmpresa.toFixed(2), +r.sfsEmpresa.toFixed(2),
+        +r.srlEmpresa.toFixed(2), +r.infotep.toFixed(2),
+        +(r.afpEmpresa+r.sfsEmpresa+r.srlEmpresa+r.infotep).toFixed(2),
+        +r.costEmpresa.toFixed(2)
+      ];
+    });
+
+    // Fila de totales
+    const totRow = ['TOTALES','','','','','',
+      ...Array(nPer).fill(''),
+      ...new Array(hdr.length-6-nPer).fill(0).map((_,ci) => {
+        const colIdx = 6+nPer+ci;
+        return +emps.reduce((s,r)=>{
+          const row = dataRows[emps.indexOf(r)];
+          return s + (typeof row[colIdx]==='number'?row[colIdx]:0);
+        },0).toFixed(2);
+      })
+    ];
+
+    const allRows = [...metaRows, hdr, ...dataRows, totRow];
+    const ws1 = XL.utils.aoa_to_sheet(allRows);
+    ws1['!cols'] = [
+      {wch:5},{wch:14},{wch:34},{wch:22},{wch:16},{wch:14},
+      ...Array(nPer).fill({wch:12}),
+      {wch:14},
+      ...incTypesUsed.map(()=>({wch:18})),
+      {wch:16},{wch:14},
+      {wch:16},{wch:16},{wch:14},
+      ...dedTypesUsed.map(()=>({wch:18})),
+      {wch:16},{wch:14},
+      {wch:14},{wch:14},{wch:14},{wch:12},{wch:16},{wch:18}
+    ];
+    XL.utils.book_append_sheet(wb, ws1, 'Nómina Completa');
+
+    // ── HOJA 2: DETALLE POR QUINCENA ─────────────────────────────────────────
+    const det = [];
+    det.push([`DETALLE POR QUINCENA — ${mesData.label.toUpperCase()}`]);
+    det.push([]);
+    det.push(['Quincena','Cédula','Nombre','Cargo',
+      'Sal.Período','Tipo Ingreso Extra','Monto Extra',
+      'AFP Trab.','SFS Trab.','ISR',
+      'Total Deduc.','Neto Pagado']);
+    mesData.periodos.forEach((p,pi) => {
+      p.rows.forEach(({emp,calc}) => {
+        const extras = calc.incomesExtra||[];
+        const totalE = extras.reduce((s,i)=>s+i.amount,0);
+        det.push([
+          p.period?.label, emp.cedula, emp.name, emp.position,
+          +calc.periodSalary.toFixed(2),
+          extras.length>0 ? extras.map(e=>`${INCOME_LABELS[e.type]||e.type}: RD$${e.amount.toFixed(2)}`).join(' | ') : '—',
+          +totalE.toFixed(2),
+          +calc.afpWorker.toFixed(2), +calc.sfsWorker.toFixed(2),
+          +calc.isrPeriodo.toFixed(2),
+          +calc.totalDeductions.toFixed(2), +calc.totalAPagar.toFixed(2)
+        ]);
+      });
+      det.push([`  — Subtotal ${p.period?.label} — Empleados: ${p.rows.length}`,
+        '','','',
+        +p.rows.reduce((s,r)=>s+r.calc.periodSalary,0).toFixed(2),'',
+        +p.rows.reduce((s,r)=>s+(r.calc.incomesExtra||[]).reduce((ss,i)=>ss+i.amount,0),0).toFixed(2),
+        +p.rows.reduce((s,r)=>s+r.calc.afpWorker,0).toFixed(2),
+        +p.rows.reduce((s,r)=>s+r.calc.sfsWorker,0).toFixed(2),
+        +p.rows.reduce((s,r)=>s+r.calc.isrPeriodo,0).toFixed(2),
+        +p.rows.reduce((s,r)=>s+r.calc.totalDeductions,0).toFixed(2),
+        +p.rows.reduce((s,r)=>s+r.calc.totalAPagar,0).toFixed(2),
+      ]);
+      det.push([]);
+    });
+    const ws2 = XL.utils.aoa_to_sheet(det);
+    ws2['!cols'] = [{wch:20},{wch:14},{wch:34},{wch:22},{wch:12},{wch:55},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:14}];
+    XL.utils.book_append_sheet(wb, ws2, 'Detalle Quincenas');
+
+    // ── HOJA 3: APORTES TSS ────────────────────────────────────────────────
+    const tss = [];
+    tss.push([`PLANILLA TSS — ${mesData.label.toUpperCase()}`]);
+    tss.push(['TSS Res.01-2025 | AFP 2.87%/7.10% | SFS 3.04%/7.09% | SRL 1.20% | INFOTEP 1%']);
+    tss.push([]);
+    tss.push(['No.','Cédula','Nombre','Cargo','Sal.Mensual','Sal.Período',
+      'AFP Trab.','SFS Trab.','AFP Emp.','SFS Emp.','SRL Emp.','INFOTEP',
+      'Total TSS sin INFOTEP','Total TSS con INFOTEP']);
+    emps.forEach((r,i) => {
+      tss.push([
+        i+1, r.emp.cedula, r.emp.name, r.emp.position,
+        +r.emp.salary.toFixed(2), +r.salario.toFixed(2),
+        +r.afpWorker.toFixed(2), +r.sfsWorker.toFixed(2),
+        +r.afpEmpresa.toFixed(2), +r.sfsEmpresa.toFixed(2),
+        +r.srlEmpresa.toFixed(2), +r.infotep.toFixed(2),
+        +(r.afpWorker+r.sfsWorker+r.afpEmpresa+r.sfsEmpresa+r.srlEmpresa).toFixed(2),
+        +(r.afpWorker+r.sfsWorker+r.afpEmpresa+r.sfsEmpresa+r.srlEmpresa+r.infotep).toFixed(2)
+      ]);
+    });
+    tss.push(['TOTALES','','','','',
+      +emps.reduce((s,r)=>s+r.salario,0).toFixed(2),
+      +emps.reduce((s,r)=>s+r.afpWorker,0).toFixed(2),
+      +emps.reduce((s,r)=>s+r.sfsWorker,0).toFixed(2),
+      +emps.reduce((s,r)=>s+r.afpEmpresa,0).toFixed(2),
+      +emps.reduce((s,r)=>s+r.sfsEmpresa,0).toFixed(2),
+      +emps.reduce((s,r)=>s+r.srlEmpresa,0).toFixed(2),
+      +emps.reduce((s,r)=>s+r.infotep,0).toFixed(2),
+      +emps.reduce((s,r)=>s+r.afpWorker+r.sfsWorker+r.afpEmpresa+r.sfsEmpresa+r.srlEmpresa,0).toFixed(2),
+      +emps.reduce((s,r)=>s+r.afpWorker+r.sfsWorker+r.afpEmpresa+r.sfsEmpresa+r.srlEmpresa+r.infotep,0).toFixed(2)
+    ]);
+    const ws3 = XL.utils.aoa_to_sheet(tss);
+    ws3['!cols'] = [{wch:5},{wch:14},{wch:34},{wch:22},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12},{wch:18},{wch:18}];
+    XL.utils.book_append_sheet(wb, ws3, 'Planilla TSS');
+
+    const fname = `nomina-amalfi-${mesData.key}.xlsx`;
+    XL.writeFile(wb, fname);
+  };
+
   // ── Generar Archivo AM (Autodeterminación Mensual) TSS ──────────────────
   const generateAMTxt = (selectedPeriod) => {
     const RNC = "131079989";
@@ -2421,14 +2633,20 @@ function Reportes({ employees, periods, deletePeriod }) {
                           <td style={{color:"#7C3AED",fontWeight:600}}>{fmt(srlInf)}</td>
                           <td style={{color:"#15803D",fontWeight:800,fontFamily:"Montserrat"}}>{fmt(tssTotal)}</td>
                           <td onClick={e=>e.stopPropagation()} style={{display:"flex",gap:5,flexWrap:"nowrap"}}>
-                            <button className="btn bsm bp1" onClick={()=>exportTSS(pMerged)} title="Exportar CSV mes completo">
-                              ⬇️ CSV
+                            <button className="btn bsm bp1" onClick={()=>exportTSS(pMerged)} title="Exportar CSV TSS mes completo">
+                              ⬇️ CSV TSS
                             </button>
                             <button className="btn bsm" onClick={()=>generateAMTxt(pMerged)}
                               style={{background:"#16A34A",color:"white",border:"none",
                                 padding:"5px 10px",borderRadius:6,cursor:"pointer",
                                 fontWeight:700,fontSize:12}} title="Exportar AM.txt mes completo">
                               📥 AM
+                            </button>
+                            <button className="btn bsm" onClick={()=>exportNominaExcel(m)}
+                              style={{background:"#7C3AED",color:"white",border:"none",
+                                padding:"5px 10px",borderRadius:6,cursor:"pointer",
+                                fontWeight:700,fontSize:12}} title="Descargar nómina completa en Excel (3 hojas)">
+                              📊 Excel
                             </button>
                           </td>
                         </tr>
