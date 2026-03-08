@@ -466,6 +466,43 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
     return { bdays: bdays.sort((a,b) => a.bd.days - b.bd.days), licencias: licencias.sort((a,b) => a.days - b.days), vacs: vacs.sort((a,b) => a.daysToVac - b.daysToVac) };
   }, [employees]);
 
+  // ── Restaurar nóminas enero 2026 ─────────────────────────────────────────
+  const restoreNominasEnero = async () => {
+    if (!window.confirm('¿Restaurar las nóminas de enero 2026 (1ra y 2da quincena)?\nEsto sobrescribirá datos existentes de esos períodos.')) return;
+    const p1 = ALL_PERIODS.find(p => p.id === '2026-1-1');
+    const p2 = ALL_PERIODS.find(p => p.id === '2026-1-2');
+    const extrasQ1 = {
+      '22900069414': [{type:'transporte_extra', amount:7000,    desc:'Servicios de Transporte Extra'}],
+      '07600161546': [{type:'transporte_extra', amount:2000,    desc:'Servicios de Transporte Extra'}],
+      '22500222868': [{type:'transporte_extra', amount:6000,    desc:'Servicios de Transporte Extra'}],
+    };
+    const extrasQ2 = {
+      '22900069414': [{type:'transporte_extra', amount:8700,    desc:'Servicios de Transporte Extra'}],
+      '07600128248': [{type:'transporte_extra', amount:6400,    desc:'Servicios de Transporte Extra'}],
+      '40225914395': [{type:'transporte_extra', amount:1500,    desc:'Servicios de Transporte Extra'}],
+      '40224305553': [{type:'transporte_extra', amount:4500,    desc:'Servicios de Transporte Extra'}],
+      '00117419952': [{type:'transporte_extra', amount:26098.62,desc:'Servicios de Transporte Extra'}],
+      '00108633728': [{type:'transporte_extra', amount:12074.91,desc:'Servicios de Transporte Extra'}],
+      '00800260077': [{type:'transporte_extra', amount:8500,    desc:'Servicios de Transporte Extra'}],
+      '40215784451': [{type:'transporte_extra', amount:8500,    desc:'Servicios de Transporte Extra'}],
+      '00108444787': [{type:'transporte_extra', amount:1500,    desc:'Servicios de Transporte Extra'}],
+      '40222131076': [{type:'transporte_extra', amount:1500,    desc:'Servicios de Transporte Extra'}],
+      '07600161546': [{type:'transporte_extra', amount:11100,   desc:'Servicios de Transporte Extra'}],
+      '22500222868': [{type:'transporte_extra', amount:14206.23,desc:'Servicios de Transporte Extra'}],
+    };
+    const makeRows = (extraMap, excluded=[]) =>
+      employees.filter(e => !excluded.includes(e.cedula))
+        .map(e => ({ emp:e, calc:calcPayroll(e, extraMap[e.cedula]||[], []) }));
+    const period1 = { periodId:'periodo-2026-1-1', period:p1, createdAt:'2026-02-04T10:00:00.000Z', rows:makeRows(extrasQ1,['07600128248']) };
+    const period2 = { periodId:'periodo-2026-1-2', period:p2, createdAt:'2026-02-04T10:30:00.000Z', rows:makeRows(extrasQ2,[]) };
+    await savePeriod(period1);
+    await savePeriod(period2);
+    setPeriods(prev => {
+      const f = prev.filter(x => x.periodId!=='periodo-2026-1-1' && x.periodId!=='periodo-2026-1-2');
+      return [...f, period1, period2];
+    });
+    if(showToast) showToast('✅ Nóminas enero 2026 restauradas');
+  };
 
   return (
     <div className="app">
@@ -4863,60 +4900,6 @@ function Root() {
     await fbDB.collection('periods').doc(String(period.periodId)).set(period);
   }
 
-  async function restoreNominasEnero() {
-    if (!window.confirm('¿Restaurar las nóminas de enero 2026 (1ra y 2da quincena)? Esto sobrescribirá los datos actuales de esos períodos.')) return;
-    // Datos exactos de ambas quincenas — reconstruidos de los registros
-    const p1 = ALL_PERIODS.find(p => p.id === '2026-1-1'); // 1 Ene - 15 Ene
-    const p2 = ALL_PERIODS.find(p => p.id === '2026-1-2'); // 16 Ene - 31 Ene
-    // Extras por cédula — { cedula: [{type, amount, desc}] }
-    const extrasQ1 = {
-      '22900069414': [{type:'transporte_extra', amount:7000,   desc:'Servicios de Transporte Extra'}],
-      '07600161546': [{type:'transporte_extra', amount:2000,   desc:'Servicios de Transporte Extra'}],
-      '22500222868': [{type:'transporte_extra', amount:6000,   desc:'Servicios de Transporte Extra'}],
-    };
-    const extrasQ2 = {
-      '22900069414': [{type:'transporte_extra', amount:8700,    desc:'Servicios de Transporte Extra'}],
-      '07600128248': [{type:'transporte_extra', amount:6400,    desc:'Servicios de Transporte Extra'}],
-      '40225914395': [{type:'transporte_extra', amount:1500,    desc:'Servicios de Transporte Extra'}],
-      '40224305553': [{type:'transporte_extra', amount:4500,    desc:'Servicios de Transporte Extra'}],
-      '00117419952': [{type:'transporte_extra', amount:26098.62,desc:'Servicios de Transporte Extra'}],
-      '00108633728': [{type:'transporte_extra', amount:12074.91,desc:'Servicios de Transporte Extra'}],
-      '00800260077': [{type:'transporte_extra', amount:8500,    desc:'Servicios de Transporte Extra'}],
-      '40215784451': [{type:'transporte_extra', amount:8500,    desc:'Servicios de Transporte Extra'}],
-      '00108444787': [{type:'transporte_extra', amount:1500,    desc:'Servicios de Transporte Extra'}],
-      '07600161546': [{type:'transporte_extra', amount:11100,   desc:'Servicios de Transporte Extra'}],
-      '40222131076': [{type:'transporte_extra', amount:1500,    desc:'Servicios de Transporte Extra'}],
-      '22500222868': [{type:'transporte_extra', amount:14206.23,desc:'Servicios de Transporte Extra'}],
-    };
-    // Empleados excluidos Q1: Fausto (07600128248) no estaba en 1ra quincena
-    const excludedQ1 = ['07600128248'];
-    const makeRows = (extraMap, excluded=[]) =>
-      employees
-        .filter(e => !excluded.includes(e.cedula))
-        .map(e => ({
-          emp: e,
-          calc: calcPayroll(e, extraMap[e.cedula]||[], [])
-        }));
-    const period1 = {
-      periodId: 'periodo-2026-1-1',
-      period: p1,
-      createdAt: '2026-02-04T10:00:00.000Z',
-      rows: makeRows(extrasQ1, excludedQ1)
-    };
-    const period2 = {
-      periodId: 'periodo-2026-1-2',
-      period: p2,
-      createdAt: '2026-02-04T10:30:00.000Z',
-      rows: makeRows(extrasQ2, [])
-    };
-    await savePeriod(period1);
-    await savePeriod(period2);
-    setPeriods(prev => {
-      const filtered = prev.filter(x => x.periodId !== period1.periodId && x.periodId !== period2.periodId);
-      return [...filtered, period1, period2];
-    });
-    alert('✅ Nóminas de enero 2026 restauradas correctamente.');
-  }
 
   async function handleLogin(email, password) {
     setAuthLoad(true); setAuthErr('');
