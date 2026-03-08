@@ -117,7 +117,10 @@ function calcPayroll(emp, incomesExtra = [], deductionsExtra = []) {
   const sfsWorker = sfsBase * RATES.SFS_WORKER;
   const cotizable = baseTSS - afpWorker - sfsWorker + nonTss;
   const periods12 = freq === 2 ? 24 : 12;
-  const cotizableAnual = cotizable * periods12;
+  // ISR se anualiza SOLO sobre salario base — los extras varían cada período
+  // y no deben inflarse como si fueran permanentes (Art. 296 Ley 11-92)
+  const cotizableBaseAnual = (baseTSS - afpWorker - sfsWorker) * periods12;
+  const cotizableAnual = cotizableBaseAnual; // alias para compatibilidad con displays
   let isrAnual = 0;
   for (const s of ISR_SCALES) {
     if (cotizableAnual > s.min) {
@@ -364,6 +367,7 @@ tr:hover td{background:#F7FAFF}
 .sls{font-size:11px;color:#8AA0BC;margin-top:2px}
 .seal{width:96px;height:96px;border:3px dashed #003366;border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 14px;color:#003366;font-size:9px;font-weight:700;text-align:center;line-height:1.5;text-transform:uppercase;letter-spacing:.5px;opacity:.55}
 @media print{.no-print{display:none!important}.ps-wrap{box-shadow:none}}
+@media print{.hdr,.nav,.no-print{display:none!important}.main{padding:4px!important}body{background:white!important}}
 `;
 
 function exportarExcelDGT3(employees) {
@@ -1420,225 +1424,290 @@ function exportPayslipPDF(data, periodLabel, periodYear, logoB64) {
 
 function PayslipView({ data, periodLabel, periodYear, onBack }) {
   const { emp, calc } = data;
-  const freq = emp.payFrequency === "quincenal" ? "Quincenal" : "Mensual";
-  const periodStart = emp.payFrequency === "quincenal"
-    ? (periodLabel && periodLabel.includes("1ra") ? `${periodYear}-${String(ALL_PERIODS.find(p=>p.label===periodLabel)?.month||1).padStart(2,"0")}-01`
-      : `${periodYear}-${String(ALL_PERIODS.find(p=>p.label===periodLabel)?.month||1).padStart(2,"0")}-16`)
-    : `${periodYear}-01-01`;
-  const periodEnd = emp.payFrequency === "quincenal"
-    ? (periodLabel && periodLabel.includes("1ra") ? `${periodYear}-${String(ALL_PERIODS.find(p=>p.label===periodLabel)?.month||1).padStart(2,"0")}-15`
-      : `${periodYear}-${String(ALL_PERIODS.find(p=>p.label===periodLabel)?.month||1).padStart(2,"0")}-30`)
-    : `${periodYear}-12-31`;
-  const dias = emp.payFrequency === "quincenal" ? 15 : 30;
-  const extraIncomeTotal = (calc.incomesExtra||[]).reduce((s,i)=>s+i.amount,0);
-  const now = new Date();
-  const nowStr = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}-${String(now.getDate()).padStart(2,"0")} ${String(now.getHours()).padStart(2,"0")}:${String(now.getMinutes()).padStart(2,"0")}:${String(now.getSeconds()).padStart(2,"0")}`;
 
-  const psStyle = `
-    .ps-alegra { font-family: Arial, Helvetica, sans-serif; font-size: 13px; color: #1a1a1a; background: white; max-width: 780px; margin: 0 auto; border: 1px solid #ddd; }
-    .ps-alegra-hdr { display: flex; align-items: flex-start; justify-content: space-between; padding: 24px 32px 18px; border-bottom: 1px solid #e0e0e0; }
-    .ps-alegra-co { text-align: center; flex: 1; }
-    .ps-alegra-co-name { font-size: 17px; font-weight: 700; margin-bottom: 2px; }
-    .ps-alegra-co-sub { font-size: 13px; color: #444; }
-    .ps-alegra-title { font-size: 22px; font-weight: 700; white-space: nowrap; }
-    .ps-alegra-emp { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 32px; padding: 16px 32px; border-bottom: 1px solid #e0e0e0; font-size: 13px; }
-    .ps-alegra-lbl { color: #555; }
-    .ps-alegra-val { font-weight: 600; }
-    .ps-alegra-resumen-title { font-weight: 700; font-size: 13px; padding: 10px 32px 6px; }
-    .ps-alegra-resumen { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; border: 1px solid #e0e0e0; margin: 0 32px 18px; border-radius: 4px; overflow: hidden; }
-    .ps-alegra-res-cell { padding: 14px 16px; border-right: 1px solid #e0e0e0; }
-    .ps-alegra-res-cell:last-child { border-right: none; background: #f8f8f8; }
-    .ps-alegra-res-ico { font-size: 11px; color: #888; margin-bottom: 4px; display: flex; align-items: center; gap: 5px; }
-    .ps-alegra-res-val { font-size: 16px; font-weight: 700; }
-    .ps-alegra-res-total-lbl { font-size: 11px; font-weight: 700; color: #333; text-transform: uppercase; margin-bottom: 4px; }
-    .ps-alegra-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0 32px; padding: 0 32px 24px; }
-    .ps-alegra-section-title { font-weight: 700; font-size: 12px; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; padding-bottom: 4px; border-bottom: 1.5px solid #1a1a1a; }
-    .ps-alegra-table { width: 100%; border-collapse: collapse; font-size: 12px; }
-    .ps-alegra-table th { text-align: left; font-size: 11px; color: #888; font-weight: 600; padding: 4px 4px; text-transform: uppercase; letter-spacing: 0.3px; border-bottom: 1px solid #e0e0e0; }
-    .ps-alegra-table th:last-child, .ps-alegra-table td:last-child { text-align: right; }
-    .ps-alegra-table td { padding: 7px 4px; border-bottom: 1px solid #f0f0f0; vertical-align: top; }
-    .ps-alegra-table tfoot td { font-weight: 700; border-top: 1.5px solid #1a1a1a; border-bottom: none; padding-top: 8px; font-size: 13px; }
-    .ps-alegra-foot { display: grid; grid-template-columns: 1fr 1fr; gap: 4px; padding: 12px 32px 20px; border-top: 1px solid #e0e0e0; font-size: 12px; color: #666; }
+  // ── Fechas correctas del período usando ALL_PERIODS ───────────────────────
+  const periodo = ALL_PERIODS.find(p => p.label === periodLabel && p.year === periodYear);
+  const periodStart = periodo?.startDate || '';
+  const periodEnd   = periodo?.endDate   || '';
+  const dias = emp.payFrequency === 'quincenal' ? 15 : (new Date(periodYear, (periodo?.month||1), 0).getDate());
+
+  const extraIncomeTotal = (calc.incomesExtra||[]).reduce((s,i)=>s+i.amount,0);
+  const metodoPago = emp.metodoPago || 'Transferencia bancaria';
+  const fmtMoney = n => (n||0).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const now = new Date();
+  const nowStr = now.toLocaleDateString('es-DO',{day:'2-digit',month:'long',year:'numeric'}) + ' ' +
+    now.toLocaleTimeString('es-DO',{hour:'2-digit',minute:'2-digit'});
+
+  const printCSS = `
     @media print {
-      .no-print { display: none !important; }
-      .ps-alegra { border: none; max-width: 100%; }
+      .hdr, .nav, .no-print, button { display: none !important; }
+      .main { padding: 0 !important; }
       body { background: white !important; }
+      .ps-wrap { box-shadow: none !important; border: none !important; }
     }
+  `;
+
+  const css = `
+    .ps-wrap {
+      font-family: 'Source Sans 3', Arial, sans-serif;
+      max-width: 760px; margin: 0 auto;
+      background: white; border-radius: 16px;
+      box-shadow: 0 8px 40px rgba(0,51,102,.13);
+      overflow: hidden; border: 1px solid #D0DCF0;
+    }
+    /* Cabecera azul */
+    .ps-head {
+      background: linear-gradient(135deg,#002855,#0052A3);
+      padding: 24px 32px; display: flex; align-items: center; gap: 20px;
+    }
+    .ps-head-logo { height: 64px; width: auto; border-radius: 8px; background: white; padding: 6px; }
+    .ps-head-co { flex: 1; }
+    .ps-head-co-name { font-family: Montserrat,sans-serif; font-size: 18px; font-weight: 800; color: white; letter-spacing: .5px; }
+    .ps-head-co-rnc  { font-size: 12px; color: rgba(255,255,255,.65); margin-top: 2px; }
+    .ps-head-right   { text-align: right; }
+    .ps-head-title   { font-family: Montserrat,sans-serif; font-size: 20px; font-weight: 800; color: #E8A020; }
+    .ps-head-period  { font-size: 12px; color: rgba(255,255,255,.7); margin-top: 4px; }
+
+    /* Banda dorada */
+    .ps-band { background: #E8A020; height: 4px; }
+
+    /* Datos empleado */
+    .ps-emp { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+    .ps-emp-col { padding: 18px 28px; }
+    .ps-emp-col:first-child { border-right: 1px solid #EEF3FA; }
+    .ps-field { margin-bottom: 10px; }
+    .ps-field-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: 1px; color: #8090A0; font-weight: 700; margin-bottom: 2px; }
+    .ps-field-val { font-size: 13px; font-weight: 600; color: #1A2A3A; }
+
+    /* Resumen */
+    .ps-summary { display: grid; grid-template-columns: repeat(4,1fr); border-top: 1px solid #EEF3FA; }
+    .ps-sum-cell { padding: 16px 20px; border-right: 1px solid #EEF3FA; }
+    .ps-sum-cell:last-child { border-right: none; background: #F0FDF4; }
+    .ps-sum-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .8px; color: #8090A0; font-weight: 700; margin-bottom: 6px; }
+    .ps-sum-val { font-family: Montserrat,sans-serif; font-size: 15px; font-weight: 800; color: #1A2A3A; }
+    .ps-sum-total { font-family: Montserrat,sans-serif; font-size: 20px; font-weight: 800; color: #16A34A; }
+
+    /* Tablas */
+    .ps-tables { display: grid; grid-template-columns: 1fr 1fr; gap: 0; border-top: 1px solid #EEF3FA; }
+    .ps-tbl-wrap { padding: 18px 24px; }
+    .ps-tbl-wrap:first-child { border-right: 1px solid #EEF3FA; }
+    .ps-tbl-title { font-family: Montserrat,sans-serif; font-size: 11px; font-weight: 800; text-transform: uppercase; letter-spacing: 1.5px; color: #003366; margin-bottom: 10px; padding-bottom: 6px; border-bottom: 2px solid #003366; }
+    .ps-tbl { width: 100%; border-collapse: collapse; font-size: 12px; }
+    .ps-tbl th { font-size: 10px; color: #8090A0; font-weight: 700; text-transform: uppercase; padding: 0 6px 6px; border-bottom: 1px solid #EEF3FA; }
+    .ps-tbl th:last-child, .ps-tbl td:last-child { text-align: right; }
+    .ps-tbl td { padding: 8px 6px; border-bottom: 1px solid #F8FAFC; vertical-align: top; color: #2A3A4A; }
+    .ps-tbl tfoot td { font-weight: 800; font-size: 13px; border-top: 2px solid #1A2A3A; border-bottom: none; padding-top: 10px; color: #003366; }
+    .ps-tbl .pos { color: #16A34A; font-weight: 700; }
+    .ps-tbl .neg { color: #DC2626; font-weight: 700; }
+
+    /* Pie */
+    .ps-foot { padding: 14px 28px; background: #F8FAFF; border-top: 1px solid #EEF3FA; display: flex; justify-content: space-between; align-items: center; }
+    .ps-foot-note { font-size: 11px; color: #8090A0; }
+    .ps-foot-seal { font-size: 11px; color: #8090A0; text-align: right; }
   `;
 
   return (
     <>
-      <style>{psStyle}</style>
-      {/* Toolbar */}
-      <div className="fc mb3 no-print" style={{gap:10}}>
+      <style>{css + printCSS}</style>
+
+      {/* Toolbar — oculto en impresión */}
+      <div className="no-print fc mb3" style={{gap:10}}>
         <button className="btn bol bsm" onClick={onBack}>← Volver</button>
         <div className="pt" style={{marginBottom:0}}>Comprobante de Pago</div>
-        <div style={{marginLeft:"auto",display:"flex",gap:8}}>
+        <div style={{marginLeft:'auto',display:'flex',gap:8}}>
           <button className="btn bgh bsm" onClick={()=>window.print()}>🖨️ Imprimir</button>
           <button className="btn bsm" onClick={()=>exportPayslipPDF(data, periodLabel, periodYear, LOGO_TEA)}
-            style={{background:'#16A34A',color:'white',border:'none',borderRadius:8,padding:'8px 16px',
-              fontWeight:700,cursor:'pointer',fontSize:13}}>
+            style={{background:'#16A34A',color:'white',border:'none',borderRadius:8,padding:'8px 16px',fontWeight:700,cursor:'pointer',fontSize:13}}>
             ⬇️ Descargar PDF
           </button>
         </div>
       </div>
 
-      <div className="ps-alegra">
+      <div className="ps-wrap">
         {/* ── CABECERA ── */}
-        <div className="ps-alegra-hdr">
-          <img src={LOGO_TEA} alt="TEA" style={{height:70, width:"auto", objectFit:"contain", flexShrink:0}}/>
-          <div className="ps-alegra-co">
-            <div className="ps-alegra-co-name">TRANSPORTE EMPRESARIAL AMALFI, SRL</div>
-            <div className="ps-alegra-co-sub">RNC: 131079989</div>
-            <div className="ps-alegra-co-sub">administracion@transporteamalfi.com</div>
+        <div className="ps-head">
+          <img src={LOGO_TEA} alt="TEA" className="ps-head-logo" />
+          <div className="ps-head-co">
+            <div className="ps-head-co-name">TRANSPORTE EMPRESARIAL AMALFI, SRL</div>
+            <div className="ps-head-co-rnc">RNC: 131-07998-9 · administracion@transporteamalfi.com</div>
           </div>
-          <div className="ps-alegra-title">Recibo de pago</div>
+          <div className="ps-head-right">
+            <div className="ps-head-title">RECIBO DE PAGO</div>
+            <div className="ps-head-period">{periodLabel} · {periodYear}</div>
+          </div>
         </div>
+        <div className="ps-band" />
 
         {/* ── DATOS EMPLEADO ── */}
-        <div className="ps-alegra-emp">
-          <div>
-            <div style={{display:"flex",gap:8,marginBottom:5}}>
-              <span className="ps-alegra-lbl" style={{minWidth:100}}>Empleado</span>
-              <span className="ps-alegra-val">{emp.name}</span>
+        <div className="ps-emp">
+          <div className="ps-emp-col">
+            <div className="ps-field">
+              <div className="ps-field-lbl">Empleado</div>
+              <div className="ps-field-val" style={{fontSize:15,color:'#003366'}}>{emp.name}</div>
             </div>
-            <div style={{display:"flex",gap:8,marginBottom:5}}>
-              <span className="ps-alegra-lbl" style={{minWidth:100}}>Identificación</span>
-              <span className="ps-alegra-val">{emp.cedula}</span>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:0}}>
+              <div className="ps-field">
+                <div className="ps-field-lbl">Cédula</div>
+                <div className="ps-field-val">{emp.cedula}</div>
+              </div>
+              <div className="ps-field">
+                <div className="ps-field-lbl">NSS</div>
+                <div className="ps-field-val">{emp.nss || '—'}</div>
+              </div>
             </div>
-            <div style={{display:"flex",gap:8}}>
-              <span className="ps-alegra-lbl" style={{minWidth:100}}>Cargo</span>
-              <span className="ps-alegra-val">{emp.position}</span>
+            <div className="ps-field">
+              <div className="ps-field-lbl">Cargo</div>
+              <div className="ps-field-val">{emp.position}</div>
+            </div>
+            <div className="ps-field">
+              <div className="ps-field-lbl">Medio de pago</div>
+              <div className="ps-field-val">{metodoPago}</div>
             </div>
           </div>
-          <div>
-            <div style={{display:"flex",gap:8,marginBottom:5}}>
-              <span className="ps-alegra-lbl" style={{minWidth:160}}>Fecha de inicio de nómina</span>
-              <span className="ps-alegra-val">{periodStart}</span>
+          <div className="ps-emp-col">
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:0}}>
+              <div className="ps-field">
+                <div className="ps-field-lbl">Inicio período</div>
+                <div className="ps-field-val">{fmtDate(periodStart)}</div>
+              </div>
+              <div className="ps-field">
+                <div className="ps-field-lbl">Fin período</div>
+                <div className="ps-field-val">{fmtDate(periodEnd)}</div>
+              </div>
             </div>
-            <div style={{display:"flex",gap:8,marginBottom:5}}>
-              <span className="ps-alegra-lbl" style={{minWidth:160}}>Fecha de fin de nómina</span>
-              <span className="ps-alegra-val">{periodEnd}</span>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:0}}>
+              <div className="ps-field">
+                <div className="ps-field-lbl">Días calculados</div>
+                <div className="ps-field-val">{dias}</div>
+              </div>
+              <div className="ps-field">
+                <div className="ps-field-lbl">Frecuencia</div>
+                <div className="ps-field-val">{emp.payFrequency === 'quincenal' ? 'Quincenal' : 'Mensual'}</div>
+              </div>
             </div>
-            <div style={{display:"flex",gap:8,marginBottom:5}}>
-              <span className="ps-alegra-lbl" style={{minWidth:160}}>Medio de pago</span>
-              <span className="ps-alegra-val">T. bancaria</span>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:0}}>
+              <div className="ps-field">
+                <div className="ps-field-lbl">Banco</div>
+                <div className="ps-field-val">{emp.bank || '—'}</div>
+              </div>
+              <div className="ps-field">
+                <div className="ps-field-lbl">Cuenta</div>
+                <div className="ps-field-val">{emp.account || '—'}</div>
+              </div>
             </div>
-            <div style={{display:"flex",gap:8}}>
-              <span className="ps-alegra-lbl" style={{minWidth:160}}>Días calculados</span>
-              <span className="ps-alegra-val">{dias}</span>
+            <div className="ps-field">
+              <div className="ps-field-lbl">Generado</div>
+              <div className="ps-field-val">{nowStr}</div>
             </div>
           </div>
         </div>
 
-        {/* ── RESUMEN DEL PAGO ── */}
-        <div className="ps-alegra-resumen-title">RESUMEN DEL PAGO</div>
-        <div className="ps-alegra-resumen">
-          <div className="ps-alegra-res-cell">
-            <div className="ps-alegra-res-ico">⊟ Salario</div>
-            <div className="ps-alegra-res-val">RD${calc.periodSalary.toLocaleString("es-DO",{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+        {/* ── RESUMEN ── */}
+        <div className="ps-summary">
+          <div className="ps-sum-cell">
+            <div className="ps-sum-lbl">Salario base</div>
+            <div className="ps-sum-val">RD${fmtMoney(calc.periodSalary)}</div>
           </div>
-          <div className="ps-alegra-res-cell">
-            <div className="ps-alegra-res-ico">↑ Ingresos adicionales</div>
-            <div className="ps-alegra-res-val">RD${extraIncomeTotal.toLocaleString("es-DO",{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+          <div className="ps-sum-cell">
+            <div className="ps-sum-lbl">Ingresos adicionales</div>
+            <div className="ps-sum-val" style={{color: extraIncomeTotal>0?'#16A34A':'#8090A0'}}>
+              {extraIncomeTotal > 0 ? `+ RD$${fmtMoney(extraIncomeTotal)}` : '—'}
+            </div>
           </div>
-          <div className="ps-alegra-res-cell">
-            <div className="ps-alegra-res-ico">↓ Deducciones</div>
-            <div className="ps-alegra-res-val">RD${calc.totalDeductions.toLocaleString("es-DO",{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+          <div className="ps-sum-cell">
+            <div className="ps-sum-lbl">Total deducciones</div>
+            <div className="ps-sum-val" style={{color:'#DC2626'}}>- RD${fmtMoney(calc.totalDeductions)}</div>
           </div>
-          <div className="ps-alegra-res-cell">
-            <div className="ps-alegra-res-total-lbl">TOTAL DE PAGO</div>
-            <div className="ps-alegra-res-val" style={{fontSize:18}}>RD${calc.totalAPagar.toLocaleString("es-DO",{minimumFractionDigits:2,maximumFractionDigits:2})}</div>
+          <div className="ps-sum-cell">
+            <div className="ps-sum-lbl">💰 Total a pagar</div>
+            <div className="ps-sum-total">RD${fmtMoney(calc.totalAPagar)}</div>
           </div>
         </div>
 
-        {/* ── INGRESOS + DEDUCCIONES ── */}
-        <div className="ps-alegra-body">
-          {/* Ingresos */}
-          <div>
-            <div className="ps-alegra-section-title">Ingresos</div>
-            <table className="ps-alegra-table">
+        {/* ── TABLAS INGRESOS / DEDUCCIONES ── */}
+        <div className="ps-tables">
+          <div className="ps-tbl-wrap">
+            <div className="ps-tbl-title">Ingresos</div>
+            <table className="ps-tbl">
               <thead>
                 <tr>
-                  <th style={{width:"40%"}}>Concepto</th>
-                  <th>Porcentaje</th>
+                  <th style={{textAlign:'left',width:'55%'}}>Concepto</th>
                   <th>Días</th>
-                  <th>Horas</th>
                   <th>Valor</th>
                 </tr>
               </thead>
               <tbody>
                 <tr>
-                  <td>Salario {freq}</td>
-                  <td>-</td><td>{dias}</td><td>-</td>
-                  <td>RD${calc.periodSalary.toLocaleString("es-DO",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+                  <td>Salario {emp.payFrequency === 'quincenal' ? 'Quincenal' : 'Mensual'}</td>
+                  <td style={{textAlign:'center'}}>{dias}</td>
+                  <td className="pos">RD${fmtMoney(calc.periodSalary)}</td>
                 </tr>
                 {(calc.incomesExtra||[]).map((inc,i) => {
                   const t = INCOME_TYPES.find(x=>x.value===inc.type);
                   return (
                     <tr key={i}>
-                      <td>{t?.label||inc.type}{inc.desc?` — ${inc.desc}`:""}</td>
-                      <td>-</td><td>-</td><td>-</td>
-                      <td>RD${inc.amount.toLocaleString("es-DO",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+                      <td>{t?.label||inc.type}{inc.desc?<span style={{color:'#8090A0',fontSize:11}}><br/>{inc.desc}</span>:''}</td>
+                      <td style={{textAlign:'center'}}>—</td>
+                      <td className="pos">RD${fmtMoney(inc.amount)}</td>
                     </tr>
                   );
                 })}
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={4}>TOTAL</td>
-                  <td>RD ${(calc.periodSalary+extraIncomeTotal).toLocaleString("es-DO",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+                  <td colSpan={2}>TOTAL INGRESOS</td>
+                  <td>RD${fmtMoney(calc.periodSalary + extraIncomeTotal)}</td>
                 </tr>
               </tfoot>
             </table>
           </div>
 
-          {/* Deducciones */}
-          <div>
-            <div className="ps-alegra-section-title">Deducciones</div>
-            <table className="ps-alegra-table">
+          <div className="ps-tbl-wrap">
+            <div className="ps-tbl-title">Deducciones</div>
+            <table className="ps-tbl">
               <thead>
                 <tr>
-                  <th style={{width:"40%"}}>Concepto</th>
-                  <th>Porcentaje</th>
-                  <th>Días</th>
-                  <th>Horas</th>
+                  <th style={{textAlign:'left',width:'55%'}}>Concepto</th>
+                  <th>%</th>
                   <th>Valor</th>
                 </tr>
               </thead>
               <tbody>
+                <tr>
+                  <td>AFP — Fondo de Pensiones</td>
+                  <td style={{textAlign:'center'}}>2.87%</td>
+                  <td className="neg">RD${fmtMoney(calc.afpWorker)}</td>
+                </tr>
+                <tr>
+                  <td>SFS — Seguro Familiar de Salud</td>
+                  <td style={{textAlign:'center'}}>3.04%</td>
+                  <td className="neg">RD${fmtMoney(calc.sfsWorker)}</td>
+                </tr>
+                {calc.isrPeriodo > 0 && (
+                  <tr>
+                    <td>
+                      ISR — Impuesto sobre la Renta
+                      <span style={{display:'block',fontSize:10,color:'#DC2626'}}>Aplica por ingresos adicionales</span>
+                    </td>
+                    <td style={{textAlign:'center',fontSize:10,color:'#DC2626'}}>DGII</td>
+                    <td className="neg">RD${fmtMoney(calc.isrPeriodo)}</td>
+                  </tr>
+                )}
                 {(calc.deductionsExtra||[]).map((ded,i) => {
                   const t = DEDUCTION_TYPES.find(x=>x.value===ded.type);
                   return (
                     <tr key={i}>
-                      <td>{t?.label||ded.type}{ded.desc?` — ${ded.desc}`:""}</td>
-                      <td>-</td><td>-</td><td>-</td>
-                      <td>${ded.amount.toLocaleString("es-DO",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+                      <td>{t?.label||ded.type}{ded.desc?<span style={{color:'#8090A0',fontSize:11}}><br/>{ded.desc}</span>:''}</td>
+                      <td style={{textAlign:'center'}}>—</td>
+                      <td className="neg">RD${fmtMoney(ded.amount)}</td>
                     </tr>
                   );
                 })}
-                <tr>
-                  <td>Seguro Familiar de Salud</td>
-                  <td>3.04%</td><td>-</td><td>-</td>
-                  <td>${calc.sfsWorker.toLocaleString("es-DO",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-                </tr>
-                <tr>
-                  <td>Administradoras de Fondos de Pensiones</td>
-                  <td>2.87%</td><td>-</td><td>-</td>
-                  <td>${calc.afpWorker.toLocaleString("es-DO",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-                </tr>
-                {calc.isrPeriodo > 0 && (
-                  <tr>
-                    <td>Impuesto sobre la Renta (ISR)</td>
-                    <td>DGII</td><td>-</td><td>-</td>
-                    <td>${calc.isrPeriodo.toLocaleString("es-DO",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
-                  </tr>
-                )}
               </tbody>
               <tfoot>
                 <tr>
-                  <td colSpan={4}>TOTAL</td>
-                  <td>RD ${calc.totalDeductions.toLocaleString("es-DO",{minimumFractionDigits:2,maximumFractionDigits:2})}</td>
+                  <td colSpan={2}>TOTAL DEDUCCIONES</td>
+                  <td>RD${fmtMoney(calc.totalDeductions)}</td>
                 </tr>
               </tfoot>
             </table>
@@ -1646,20 +1715,22 @@ function PayslipView({ data, periodLabel, periodYear, onBack }) {
         </div>
 
         {/* ── PIE ── */}
-        <div className="ps-alegra-foot">
-          <div>
-            <div style={{color:"#888",marginBottom:2}}>Moneda</div>
-            <div>Peso Dominicano (DOP)</div>
+        <div className="ps-foot">
+          <div className="ps-foot-note">
+            Elaborado por sistema · Ley 16-92 · TSS Resolución 01-2025<br/>
+            {calc.isrPeriodo > 0 && <span style={{color:'#DC2626'}}>⚠ ISR aplicó por ingresos adicionales que superaron RD$416,220 anuales</span>}
           </div>
-          <div>
-            <div style={{color:"#888",marginBottom:2}}>Fecha y hora generación</div>
-            <div>{nowStr}</div>
+          <div className="ps-foot-seal">
+            <div style={{borderTop:'1px solid #C0CCD8',paddingTop:6,marginTop:20,minWidth:140,textAlign:'center'}}>
+              Firma autorizada
+            </div>
           </div>
         </div>
       </div>
     </>
   );
 }
+
 
 function Reportes({ employees, periods, deletePeriod }) {
   const [tssTab, setTssTab] = React.useState("resumen");
