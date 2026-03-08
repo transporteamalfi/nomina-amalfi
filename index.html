@@ -240,7 +240,7 @@ const SEED_EMPLOYEES = [
       {nss:"153908052", nombre:"Rosmery Cristal Rosario Serda",   parentesco:"Hija"},
       {nss:"181504981", nombre:"Chaneidi Cristal Rosario Serda",  parentesco:"Hija"}
     ]},
-  { id:13, cedula:"00118845999", name:"Yanelci Alberti Piña",               position:"Gerente",                   area:"Administrativa", salary:80000,     hireDate:"2015-08-21", birthdate:"1990-09-21", payFrequency:"quincenal", bank:"Banco Popular",  account:"1300000001", accountType:"Ahorros",  tss:"013", contractType:"Tiempo Indefinido",
+  { id:13, cedula:"00118845999", name:"Yanelci Alberti Piña",               position:"Gerente",                   area:"Gerencial",      salary:80000,     hireDate:"2015-08-21", birthdate:"1990-09-21", payFrequency:"quincenal", ars:"ARS PLAN SALUD BANCO CENTRAL", bank:"Banco Popular",  account:"1300000001", accountType:"Ahorros",  tss:"013", contractType:"Tiempo Indefinido",
     nss:"07939920",  ars:"SEGURO NACIONAL DE SALUD (SENASA) - REGIMEN CONTRIBUTIVO",
     telefono:"", direccion:"", municipio:"Santo Domingo de Guzmán", jornada:"Diurna", metodoPago:"Transferencia bancaria",
     licenciaNum:"", licenciaVence:"", dependientes:[] },
@@ -256,7 +256,7 @@ const SEED_EMPLOYEES = [
       {nss:"189113670", nombre:"Martha Kayra De Leon Nuñez",        parentesco:"Hija"},
       {nss:"86970141",  nombre:"Jenniffer Cristina Nuñez Abreu",    parentesco:"Compañero(a) de Vida"}
     ]},
-  { id:16, cedula:"00108444787", name:"Santo Feliciano Muñoz Cabrera",       position:"SEGURIDAD",                area:"Operativa",      salary:18067.80,  hireDate:"2019-02-09", birthdate:"1963-11-10", payFrequency:"quincenal", bank:"",               account:"",           accountType:"",         tss:"016", contractType:"Tiempo Indefinido",
+  { id:16, cedula:"00108444787", name:"Santo Feliciano Muñoz Cabrera",       position:"SEGURIDAD",                area:"Operativa",      salary:18421.20,  hireDate:"2019-02-09", birthdate:"1963-11-10", payFrequency:"quincenal", bank:"",               account:"",           accountType:"",         tss:"016", contractType:"Tiempo Indefinido",
     nss:"10697457",  ars:"ARS FUTURO",
     telefono:"+18492247549", jornada:"Diurna", metodoPago:"Efectivo",
     licenciaNum:"", licenciaVence:"",
@@ -267,7 +267,7 @@ const SEED_EMPLOYEES = [
     nss:"19603216",  ars:"ARS RENACER",
     telefono:"+18295739476", direccion:"Res. Monumental, Manzana E EDIF 28", municipio:"Santo Domingo de Guzmán", jornada:"Mixto", metodoPago:"Transferencia bancaria",
     licenciaNum:"", licenciaVence:"", dependientes:[] },
-  { id:18, cedula:"00108633728", name:"Obispo Confesor Ramirez",              position:"SEGURIDAD",                area:"Operativa",      salary:18067.80,  hireDate:"2025-01-15", birthdate:"1956-02-21", payFrequency:"quincenal", bank:"",               account:"",           accountType:"",         tss:"018", contractType:"Tiempo Indefinido",
+  { id:18, cedula:"00108633728", name:"Obispo Confesor Ramirez",              position:"SEGURIDAD",                area:"Operativa",      salary:18421.20,  hireDate:"2025-01-15", birthdate:"1956-02-21", payFrequency:"quincenal", bank:"",               account:"",           accountType:"",         tss:"018", contractType:"Tiempo Indefinido",
     nss:"11866446",  ars:"ARS DR. YUNEN",
     telefono:"", jornada:"Nocturna", metodoPago:"Efectivo",
     licenciaNum:"", licenciaVence:"", dependientes:[] },
@@ -491,11 +491,15 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
       '07600161546': [{type:'transporte_extra', amount:11100,   desc:'Servicios de Transporte Extra'}],
       '22500222868': [{type:'transporte_extra', amount:14206.23,desc:'Servicios de Transporte Extra'}],
     };
-    const makeRows = (extraMap, excluded=[]) =>
+    // Deducciones por cédula Q1 — Fausto ingresó el 06/01: 2 días no laborados
+    const deducQ1 = {
+      '07600128248': [{type:'inasistencia', amount:2156.95, desc:'Días no laborados (ingresó 06/01/2026)'}],
+    };
+    const makeRows = (extraMap, deducMap={}, excluded=[]) =>
       employees.filter(e => !excluded.includes(e.cedula))
-        .map(e => ({ emp:e, calc:calcPayroll(e, extraMap[e.cedula]||[], []) }));
-    const period1 = { periodId:'periodo-2026-1-1', period:p1, createdAt:'2026-02-04T10:00:00.000Z', rows:makeRows(extrasQ1,['07600128248']) };
-    const period2 = { periodId:'periodo-2026-1-2', period:p2, createdAt:'2026-02-04T10:30:00.000Z', rows:makeRows(extrasQ2,[]) };
+        .map(e => ({ emp:e, calc:calcPayroll(e, extraMap[e.cedula]||[], deducMap[e.cedula]||[]) }));
+    const period1 = { periodId:'periodo-2026-1-1', period:p1, createdAt:'2026-02-04T10:00:00.000Z', rows:makeRows(extrasQ1,deducQ1,[]) };
+    const period2 = { periodId:'periodo-2026-1-2', period:p2, createdAt:'2026-02-04T10:30:00.000Z', rows:makeRows(extrasQ2,{},[]) };
     await savePeriod(period1);
     await savePeriod(period2);
     setPeriods(prev => {
@@ -659,6 +663,7 @@ function Dashboard({ employees, reminders, periods, setView }) {
 
 function Employees({ employees, setEmployees, editEmp, setEditEmp, showNew, setShowNew, search, setSearch }) {
   const [detailEmp, setDetailEmp] = React.useState(null);
+  const [raiseEmp, setRaiseEmp] = React.useState(null);
   const filtered = employees.filter(e => e.name.toLowerCase().includes(search.toLowerCase()) || e.cedula.includes(search) || e.position.toLowerCase().includes(search.toLowerCase()));
   return (
     <>
@@ -689,6 +694,7 @@ function Employees({ employees, setEmployees, editEmp, setEditEmp, showNew, setS
                     <td style={{whiteSpace:"nowrap"}}>
                       <button className="btn bsm" style={{background:"#EFF6FF",color:"#1D4ED8",border:"none",marginRight:4}} onClick={() => setDetailEmp(emp)}>👁 Ver</button>
                       <button className="btn bsm bgh" onClick={() => { setEditEmp(emp); setShowNew(true); }}>✏️</button>
+                      <button className="btn bsm" style={{background:"#F0FDF4",color:"#15803D",border:"1px solid #86EFAC",marginLeft:2}} onClick={() => setRaiseEmp(emp)} title="Aplicar aumento salarial">💰</button>
                     </td>
                   </tr>
                 );
@@ -697,6 +703,7 @@ function Employees({ employees, setEmployees, editEmp, setEditEmp, showNew, setS
           </table>
         </div>
       </div>
+      {raiseEmp && <SalaryRaiseModal emp={raiseEmp} onClose={()=>setRaiseEmp(null)} onSave={(emp, newSalary, reason) => { const updated = {...emp, salary:newSalary, salaryHistory:[...(emp.salaryHistory||[]), {date:new Date().toISOString().slice(0,10), oldSalary:emp.salary, newSalary, reason}]}; setEmployees(prev=>prev.map(e=>e.id===updated.id?updated:e)); setRaiseEmp(null); }} />}
       {detailEmp && <EmployeeDetail emp={detailEmp} onClose={()=>setDetailEmp(null)} onEdit={()=>{setEditEmp(detailEmp);setShowNew(true);setDetailEmp(null);}} />}
     </>
   );
@@ -795,6 +802,20 @@ function EmployeeDetail({ emp, onClose, onEdit }) {
           ))}
         </div>
 
+        {(emp.salaryHistory||[]).length > 0 && (
+          <div style={{background:"#FFFBEB",border:"1px solid #FDE68A",borderRadius:12,padding:"14px 18px",marginTop:14}}>
+            <div style={{fontSize:12,fontWeight:700,color:"#92400E",marginBottom:10}}>📋 Historial de Aumentos Salariales</div>
+            {[...(emp.salaryHistory||[])].reverse().map((h,i)=>(
+              <div key={i} style={{display:"flex",justifyContent:"space-between",alignItems:"center",fontSize:12,padding:"6px 0",borderBottom:"1px solid #FEF3C7"}}>
+                <div><span style={{color:"#78350F",fontWeight:600}}>{h.date}</span><span style={{color:"#92400E",marginLeft:8}}>{h.reason||"Sin descripción"}</span></div>
+                <div style={{fontWeight:800,color:"#15803D",whiteSpace:"nowrap",marginLeft:8}}>
+                  RD${Number(h.oldSalary).toLocaleString("es-DO",{minimumFractionDigits:2})} → RD${Number(h.newSalary).toLocaleString("es-DO",{minimumFractionDigits:2})}
+                </div>
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="mof" style={{marginTop:16}}><button className="btn bol" onClick={onClose}>Cerrar</button></div>
       </div>
     </div>
@@ -881,7 +902,7 @@ function EmployeeModal({ onClose, onSave, initial }) {
           <div className="fg"><label className="fl">ARS (Aseguradora de Riesgos)</label>
             <select className="fs" value={form.ars||""} onChange={e=>set("ars",e.target.value)}>
               <option value="">Seleccionar ARS...</option>
-              {["SEGURO NACIONAL DE SALUD (SENASA) - REGIMEN CONTRIBUTIVO","ARS FUTURO","ARS RENACER","PRIMERA ARS","ARS APS","ARS DR. YUNEN","ARS COLEGIO MEDICO DOMINICANO CMD","ARS RESERVAS","ARS HUMANO","ARS SIMAG"].map(a=><option key={a} value={a}>{a}</option>)}
+              {["SEGURO NACIONAL DE SALUD (SENASA) - REGIMEN CONTRIBUTIVO","ARS FUTURO","ARS RENACER","PRIMERA ARS","ARS APS","ARS DR. YUNEN","ARS COLEGIO MEDICO DOMINICANO CMD","ARS RESERVAS","ARS HUMANO","ARS SIMAG","ARS PLAN SALUD BANCO CENTRAL"].map(a=><option key={a} value={a}>{a}</option>)}
             </select>
           </div>
         </div>
@@ -939,6 +960,69 @@ function EmployeeModal({ onClose, onSave, initial }) {
                   if(form.hireDate  && !isValidDisplayDate(form.hireDate))return alert("Fecha de ingreso inválida. Use DD/MM/AAAA.");
                   if(form.licenciaVence && !isValidDisplayDate(form.licenciaVence))return alert("Fecha vencimiento licencia inválida. Use DD/MM/AAAA."); onSave(form); }}>{initial?"Guardar Cambios":"Registrar Empleado"}</button></div>
     </div></div>
+  );
+}
+
+function SalaryRaiseModal({ emp, onClose, onSave }) {
+  const [newSalary, setNewSalary] = React.useState(emp.salary);
+  const [reason, setReason] = React.useState('');
+  const fmt = n => 'RD$' + Number(n).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});
+  const diff = newSalary - emp.salary;
+  const pct  = emp.salary > 0 ? ((diff/emp.salary)*100).toFixed(1) : 0;
+  return (
+    <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.55)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center',padding:20}}>
+      <div style={{background:'white',borderRadius:16,padding:'28px 24px',maxWidth:460,width:'100%',boxShadow:'0 24px 64px rgba(0,0,0,.3)'}}>
+        <div style={{fontSize:24,marginBottom:4}}>💰</div>
+        <div style={{fontFamily:'Montserrat',fontWeight:800,fontSize:18,color:'#003366',marginBottom:4}}>Aumento Salarial</div>
+        <div style={{fontSize:13,color:'#5A7090',marginBottom:20}}>{emp.name} · {emp.position}</div>
+
+        <div style={{background:'#F0F4FA',borderRadius:10,padding:'12px 16px',marginBottom:20,display:'flex',justifyContent:'space-between'}}>
+          <div><div style={{fontSize:11,color:'#8AA0BC',fontWeight:700}}>SALARIO ACTUAL</div><div style={{fontSize:20,fontWeight:800,color:'#003366'}}>{fmt(emp.salary)}</div></div>
+          {diff !== 0 && <div style={{textAlign:'right'}}><div style={{fontSize:11,color:'#8AA0BC',fontWeight:700}}>NUEVO SALARIO</div><div style={{fontSize:20,fontWeight:800,color:diff>0?'#15803D':'#DC2626'}}>{fmt(newSalary)}</div><div style={{fontSize:12,color:diff>0?'#16A34A':'#DC2626',fontWeight:700}}>{diff>0?'+':''}{fmt(diff)} ({diff>0?'+':''}{pct}%)</div></div>}
+        </div>
+
+        <div style={{marginBottom:14}}>
+          <label style={{fontSize:12,fontWeight:700,color:'#003366',display:'block',marginBottom:6}}>Nuevo Salario Mensual (RD$) *</label>
+          <input type="number" min="0" step="0.01"
+            value={newSalary}
+            onChange={e=>setNewSalary(parseFloat(e.target.value)||0)}
+            style={{width:'100%',padding:'10px 12px',border:'2px solid #BFDBFE',borderRadius:8,fontSize:16,fontWeight:700,color:'#003366',outline:'none'}}/>
+        </div>
+        <div style={{marginBottom:20}}>
+          <label style={{fontSize:12,fontWeight:700,color:'#003366',display:'block',marginBottom:6}}>Motivo del Aumento</label>
+          <select value={reason} onChange={e=>setReason(e.target.value)}
+            style={{width:'100%',padding:'9px 12px',border:'1.5px solid #E2E8F0',borderRadius:8,fontSize:13,marginBottom:8}}>
+            <option value=''>Seleccionar motivo...</option>
+            <option>Ajuste al Salario Mínimo Nacional</option>
+            <option>Incremento por mérito / desempeño</option>
+            <option>Aumento anual por inflación</option>
+            <option>Cambio de cargo / promoción</option>
+            <option>Negociación colectiva</option>
+            <option>Otro</option>
+          </select>
+        </div>
+
+        {(emp.salaryHistory||[]).length > 0 && (
+          <div style={{background:'#FFFBEB',border:'1px solid #FDE68A',borderRadius:10,padding:'10px 14px',marginBottom:18}}>
+            <div style={{fontSize:11,fontWeight:700,color:'#92400E',marginBottom:8}}>📋 HISTORIAL DE AUMENTOS</div>
+            {[...(emp.salaryHistory||[])].reverse().slice(0,5).map((h,i)=>(
+              <div key={i} style={{display:'flex',justifyContent:'space-between',fontSize:12,padding:'4px 0',borderBottom:i<Math.min((emp.salaryHistory||[]).length,5)-1?'1px solid #FEF3C7':''}}>
+                <span style={{color:'#78350F'}}>{h.date} — {h.reason||'Sin descripción'}</span>
+                <span style={{fontWeight:700,color:'#15803D'}}>{fmt(h.oldSalary)} → {fmt(h.newSalary)}</span>
+              </div>
+            ))}
+          </div>
+        )}
+
+        <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+          <button onClick={onClose} style={{padding:'9px 20px',borderRadius:8,border:'1.5px solid #E2E8F0',background:'white',color:'#5A7090',fontWeight:700,cursor:'pointer',fontSize:13}}>Cancelar</button>
+          <button onClick={()=>{ if(!newSalary||newSalary<=0) return alert('Ingrese un salario válido'); if(newSalary===emp.salary) return alert('El salario es igual al actual'); if(!reason) return alert('Seleccione un motivo'); onSave(emp,newSalary,reason); }}
+            style={{padding:'9px 20px',borderRadius:8,background:'#003366',color:'white',fontWeight:700,cursor:'pointer',border:'none',fontSize:13}}>
+            ✅ Aplicar Aumento
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -1973,13 +2057,15 @@ function Reportes({ employees, periods, deletePeriod }) {
     };
 
     // Construir filas consolidadas con detalle completo
-    const rawRows = mesData.periodos.flatMap(p => p.rows);
+    // Primero indexar períodos en orden para columnas fijas
+    const periodoIds = mesData.periodos.map(p => p.periodId);
+    const rawRows = mesData.periodos.flatMap(p => p.rows.map(r => ({...r, _pid: p.periodId})));
     const byEmp = {};
-    rawRows.forEach(({emp, calc}) => {
+    rawRows.forEach(({emp, calc, _pid}) => {
       const ced = emp.cedula;
       if (!byEmp[ced]) byEmp[ced] = {
         emp,
-        quincenas: [],
+        quincenas: Object.fromEntries(periodoIds.map(id=>[id,0])),
         salario:0, tssBased:0, nonTss:0,
         afpWorker:0, sfsWorker:0, isrPeriodo:0, extraDeducTotal:0,
         totalDeductions:0, totalAPagar:0,
@@ -1987,7 +2073,7 @@ function Reportes({ employees, periods, deletePeriod }) {
         incomeTotals:{}, deducTotals:{}
       };
       const t = byEmp[ced];
-      t.quincenas.push(calc.periodSalary);
+      t.quincenas[_pid] = (t.quincenas[_pid]||0) + calc.periodSalary;
       t.salario        += calc.periodSalary;
       t.tssBased       += calc.tssBased||0;
       t.nonTss         += calc.nonTss||0;
@@ -2049,7 +2135,7 @@ function Reportes({ employees, periods, deletePeriod }) {
       return [
         i+1, r.emp.cedula, r.emp.name, r.emp.position, r.emp.contractType,
         +r.emp.salary.toFixed(2),
-        ...r.quincenas.map(q=>+q.toFixed(2)),
+        ...periodoIds.map(id=>+(r.quincenas[id]||0).toFixed(2)),
         +r.salario.toFixed(2),
         ...incTypesUsed.map(t=>+(r.incomeTotals[t]||0).toFixed(2)),
         +totalExtras.toFixed(2),
