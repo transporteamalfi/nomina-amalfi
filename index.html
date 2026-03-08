@@ -4,6 +4,7 @@
 <meta charset="UTF-8"/>
 <meta name="viewport" content="width=device-width,initial-scale=1"/>
 <title>Nómina · Transporte Amalfi</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🚌</text></svg>">
 <!-- React 18 + Babel -->
 <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
 <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
@@ -78,7 +79,7 @@ const ISR_SCALES = [
 ];
 
 
-const fmtDate = d => { if (!d) return "—"; const dt = new Date(d+"T12:00:00"); return isNaN(dt) ? "—" : dt.toLocaleDateString("es-DO",{day:"2-digit",month:"2-digit",year:"numeric"}); };
+const fmtDate = d => { if (!d) return "—"; const dt = new Date(String(d).includes("T") ? d : d+"T12:00:00"); return isNaN(dt) ? "—" : dt.toLocaleDateString("es-DO",{day:"2-digit",month:"2-digit",year:"numeric"}); };
 const INCOME_TYPES = [
   { value: "comision",         label: "Comisión",                         affectsTSS: true  },
   { value: "vacaciones",       label: "Vacaciones",                        affectsTSS: true  },
@@ -3843,8 +3844,8 @@ function Bonificacion({ employees }) {
 
   function calcularAntiguedad(emp) {
     // Use fechaIngreso from employee record or fallback
-    if (!emp.startDate && !emp.fechaIngreso) return { years: 0, str: 'Sin fecha' };
-    const raw = emp.startDate || emp.fechaIngreso || '';
+    if (!emp.hireDate && !emp.startDate && !emp.fechaIngreso) return { years: 0, str: 'Sin fecha' };
+    const raw = emp.hireDate || emp.startDate || emp.fechaIngreso || '';
     // Handle DD/MM/AAAA or YYYY-MM-DD
     let ini;
     if (raw.includes('/')) {
@@ -4121,7 +4122,7 @@ function Vacaciones({ employees }) {
   const rd = n => 'RD$' + Number(n).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});
 
   function getAntiguedad(emp) {
-    const raw = emp.startDate || emp.fechaIngreso || '';
+    const raw = emp.hireDate || emp.startDate || emp.fechaIngreso || '';
     if (!raw) return { months: 0, years: 0, str: 'Sin fecha de ingreso' };
     let ini;
     if (raw.includes('/')) { const [d,m,y]=raw.split('/'); ini=new Date(`${y}-${m}-${d}T12:00:00`); }
