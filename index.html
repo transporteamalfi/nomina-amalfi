@@ -178,6 +178,7 @@ const SEED_EMPLOYEES = [
   { id:5,  cedula:"40211670704", name:"Isis Antonia Geronimo Mancebo",       position:"Asistente Administrativa", area:"Administrativa", salary:25700,     hireDate:"2024-12-04", birthdate:"1997-06-13", payFrequency:"quincenal", bank:"",               account:"",           accountType:"",         tss:"005", contractType:"Tiempo Indefinido",
     nss:"175419151", ars:"ARS FUTURO",
     telefono:"+18095603012", municipio:"Santo Domingo de Guzmán", jornada:"Diurna", metodoPago:"Efectivo",
+    licenciaNum:"", licenciaVence:"",
     dependientes:[
       {nss:"190272870", nombre:"Nashly Raucely Geronimo Geronimo", parentesco:"Hija"},
       {nss:"190275144", nombre:"Chelsea Isis Geronimo Geronimo",   parentesco:"Hija"}
@@ -185,12 +186,14 @@ const SEED_EMPLOYEES = [
   { id:6,  cedula:"40225914395", name:"Jorge Francisco Liriano Gonzalez",    position:"CHOFER",                   area:"Operativa",      salary:27000,     hireDate:"2019-02-20", birthdate:"1998-04-03", payFrequency:"quincenal", bank:"",               account:"",           accountType:"",         tss:"006", contractType:"Tiempo Indefinido",
     nss:"157628986", ars:"ARS APS",
     telefono:"+18499181476", direccion:"Calle Mariana Jaime #17, Bayona", municipio:"Santo Domingo de Guzmán", jornada:"Mixto", metodoPago:"Efectivo",
+    licenciaNum:"", licenciaVence:"",
     dependientes:[
       {nss:"182401600", nombre:"Silvia Maria Liriano Rosario", parentesco:"Hija"}
     ]},
   { id:7,  cedula:"40224305553", name:"Jose Alberto Rudecindo Ferreira",     position:"CHOFER",                   area:"Operativa",      salary:25700,     hireDate:"2025-07-07", birthdate:"1991-09-01", payFrequency:"quincenal", bank:"Banco Popular",  account:"833721822",  accountType:"Corriente",tss:"007", contractType:"Tiempo Indefinido",
     nss:"155224520", ars:"ARS APS",
     telefono:"+18097517157", direccion:"Calle Rosal 16, Los Girasoles 2do", municipio:"Santo Domingo de Guzmán", jornada:"Mixto", metodoPago:"Transferencia bancaria",
+    licenciaNum:"", licenciaVence:"",
     dependientes:[
       {nss:"180583545", nombre:"Jazbel Idelmary Rudecindo Soto",  parentesco:"Hija"},
       {nss:"160550478", nombre:"Frandelin Rodriguez Soto",         parentesco:"Hijastro"},
@@ -199,6 +202,7 @@ const SEED_EMPLOYEES = [
   { id:8,  cedula:"00117419952", name:"Jose Manuel Cruz",                    position:"CHOFER",                   area:"Operativa",      salary:25700,     hireDate:"2025-02-04", birthdate:"1984-01-07", payFrequency:"quincenal", bank:"Banco Popular",  account:"0817339112", accountType:"Corriente", tss:"008", contractType:"Tiempo Indefinido",
     nss:"16004328",  ars:"SEGURO NACIONAL DE SALUD (SENASA) - REGIMEN CONTRIBUTIVO",
     telefono:"+18097517157", direccion:"Carretera de Mendoza #37, Villa Faro", municipio:"Santo Domingo de Guzmán", jornada:"Mixto", metodoPago:"Transferencia bancaria",
+    licenciaNum:"", licenciaVence:"",
     dependientes:[
       {nss:"150428374", nombre:"Jose Darlin Cruz Marte",    parentesco:"Hijo"},
       {nss:"187992644", nombre:"Jose Manuel Cruz Castillo", parentesco:"Hijo"},
@@ -211,12 +215,14 @@ const SEED_EMPLOYEES = [
   { id:10, cedula:"22500222868", name:"Wilkim Manuel Bello Perez",           position:"CHOFER",                   area:"Operativa",      salary:25700,     hireDate:"2021-12-10", birthdate:"1986-10-21", payFrequency:"quincenal", bank:"Banco Popular",  account:"825473028",  accountType:"Ahorros",  tss:"010", contractType:"Tiempo Indefinido",
     nss:"584787796", ars:"SEGURO NACIONAL DE SALUD (SENASA) - REGIMEN CONTRIBUTIVO",
     telefono:"+18299073461", direccion:"Calle 13, esq 4, Sabana Larga Centro", jornada:"Mixto", metodoPago:"Transferencia bancaria",
+    licenciaNum:"", licenciaVence:"",
     dependientes:[
       {nss:"156564358", nombre:"Mia Elizabeth Bello Nuñez", parentesco:"Hija"}
     ]},
   { id:11, cedula:"40222131076", name:"Wilfrido Paula Marte",                position:"Encargado de Transportacion", area:"Operativa",   salary:40000,     hireDate:"2024-02-01", birthdate:"1992-05-28", payFrequency:"quincenal", bank:"Banco Popular",  account:"0786557710", accountType:"Ahorros",  tss:"011", contractType:"Tiempo Indefinido",
     nss:"67963411",  ars:"ARS RENACER",
     telefono:"+18094209224", direccion:"Los Girasoles", jornada:"Mixto", metodoPago:"Transferencia bancaria",
+    licenciaNum:"", licenciaVence:"",
     dependientes:[
       {nss:"162580170", nombre:"Wilfredo Paula Garcia",    parentesco:"Hijo"},
       {nss:"150710383", nombre:"Sunilda Garcia Rodriguez", parentesco:"Compañero(a) de Vida"}
@@ -224,13 +230,15 @@ const SEED_EMPLOYEES = [
   { id:12, cedula:"22900254974", name:"Yarleni Serda Corporan",              position:"Asistente de limpieza",    area:"Operativa",      salary:9500,  hireDate:"2025-02-19", birthdate:"1995-03-13", payFrequency:"quincenal", bank:"",               account:"",           accountType:"",         tss:"012", contractType:"Tiempo Indefinido",
     nss:"141366042", ars:"ARS COLEGIO MEDICO DOMINICANO CMD",
     telefono:"+18094788192", direccion:"Calle La Caoba #10, Los Alcarrizos", jornada:"Diurna", metodoPago:"Efectivo",
+    licenciaNum:"", licenciaVence:"",
     dependientes:[
       {nss:"181498776", nombre:"Yadier Francisco Rosario Serda",  parentesco:"Hijo"},
       {nss:"153908052", nombre:"Rosmery Cristal Rosario Serda",   parentesco:"Hija"},
       {nss:"181504981", nombre:"Chaneidi Cristal Rosario Serda",  parentesco:"Hija"}
     ]},
-  { id:13, cedula:"00118845999", name:"Yanelci Alberti Piña",               position:"Gerente",                   area:"Operativa",      salary:80000,     hireDate:"2015-08-21", birthdate:"1990-09-21", payFrequency:"quincenal", bank:"Banco Popular",  account:"1300000001", accountType:"Ahorros",  tss:"013", contractType:"Tiempo Indefinido",
-    nss:"07939920",  ars:"",
+  { id:13, cedula:"00118845999", name:"Yanelci Alberti Piña",               position:"Gerente",                   area:"Administrativa", salary:80000,     hireDate:"2015-08-21", birthdate:"1990-09-21", payFrequency:"quincenal", bank:"Banco Popular",  account:"1300000001", accountType:"Ahorros",  tss:"013", contractType:"Tiempo Indefinido",
+    nss:"07939920",  ars:"SEGURO NACIONAL DE SALUD (SENASA) - REGIMEN CONTRIBUTIVO",
+    telefono:"", direccion:"", municipio:"Santo Domingo de Guzmán", jornada:"Diurna", metodoPago:"Transferencia bancaria",
     licenciaNum:"", licenciaVence:"", dependientes:[] },
   { id:14, cedula:"40233217120", name:"Rusmely De La Cruz Perez",            position:"Asistente Administrativa", area:"Administrativa", salary:27000,     hireDate:"2023-09-26", birthdate:"2001-04-01", payFrequency:"quincenal", bank:"Banco Popular",  account:"0836448159", accountType:"Corriente", tss:"014", contractType:"Tiempo Indefinido",
     nss:"07168666",  ars:"",
@@ -239,6 +247,7 @@ const SEED_EMPLOYEES = [
   { id:15, cedula:"07600161546", name:"Seferino De Leon Mendez",             position:"CHOFER",                   area:"Operativa",      salary:25700,     hireDate:"2016-11-14", birthdate:"1979-05-20", payFrequency:"quincenal", bank:"Banco Popular",  account:"802234641",  accountType:"Corriente", tss:"015", contractType:"Tiempo Indefinido",
     nss:"49218115",  ars:"SEGURO NACIONAL DE SALUD (SENASA) - REGIMEN CONTRIBUTIVO",
     telefono:"+18098772489", jornada:"Mixto", metodoPago:"Transferencia bancaria",
+    licenciaNum:"", licenciaVence:"",
     dependientes:[
       {nss:"189113670", nombre:"Martha Kayra De Leon Nuñez",        parentesco:"Hija"},
       {nss:"86970141",  nombre:"Jenniffer Cristina Nuñez Abreu",    parentesco:"Compañero(a) de Vida"}
@@ -246,6 +255,7 @@ const SEED_EMPLOYEES = [
   { id:16, cedula:"00108444787", name:"Santo Feliciano Muñoz Cabrera",       position:"SEGURIDAD",                area:"Operativa",      salary:18067.80,  hireDate:"2019-02-09", birthdate:"1963-11-10", payFrequency:"quincenal", bank:"",               account:"",           accountType:"",         tss:"016", contractType:"Tiempo Indefinido",
     nss:"10697457",  ars:"ARS FUTURO",
     telefono:"+18492247549", jornada:"Diurna", metodoPago:"Efectivo",
+    licenciaNum:"", licenciaVence:"",
     dependientes:[
       {nss:"5063466",   nombre:"Eladia Perez Mendoza", parentesco:"Cónyuge - Esposa"}
     ]},
@@ -255,7 +265,7 @@ const SEED_EMPLOYEES = [
     licenciaNum:"", licenciaVence:"", dependientes:[] },
   { id:18, cedula:"00108633728", name:"Obispo Confesor Ramirez",              position:"SEGURIDAD",                area:"Operativa",      salary:18067.80,  hireDate:"2025-01-15", birthdate:"1956-02-21", payFrequency:"quincenal", bank:"",               account:"",           accountType:"",         tss:"018", contractType:"Tiempo Indefinido",
     nss:"11866446",  ars:"ARS DR. YUNEN",
-    jornada:"Nocturna", metodoPago:"Efectivo",
+    telefono:"", jornada:"Nocturna", metodoPago:"Efectivo",
     licenciaNum:"", licenciaVence:"", dependientes:[] },
 ];
 
@@ -479,14 +489,15 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
           ))}
           <div style={{marginLeft:"auto",display:"flex",gap:4,alignItems:"center"}}>
             <span style={{color:"#A0AEC0",fontSize:11,marginRight:4}}>{userEmail}</span>
-            <button className="nb" onClick={onLogout} style={{color:"#FF8888"}} title="Cerrar sesión">⏏ Salir</button>
+            <button onClick={async()=>{ if(window.confirm("¿Re-cargar datos de los 18 empleados? Esto actualizará campos faltantes sin borrar nóminas.")) { const batch=fbDB.batch(); SEED_EMPLOYEES.forEach(e => batch.set(fbDB.collection("employees").doc(String(e.id)), e)); await batch.commit(); showToast("✅ Empleados actualizados correctamente","success"); } }} style={{background:"#E8A020",color:"white",border:"none",padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",marginRight:6}} title="Recargar datos empleados">🔄 Sync Empleados</button>
+          <button className="nb" onClick={onLogout} style={{color:"#FF8888"}} title="Cerrar sesión">⏏ Salir</button>
           </div>
         </nav>
       </header>
       <main className="main">
         {view === "dashboard" && <Dashboard employees={employees} reminders={reminders} periods={periods} setView={setView} />}
         {view === "empleados" && <Employees employees={employees} setEmployees={setEmployees} editEmp={editEmp} setEditEmp={setEditEmp} showNew={showNewEmp} setShowNew={setShowNewEmp} search={search} setSearch={setSearch} />}
-        {view === "nomina" && <Nomina employees={employees} periods={periods} setPeriods={setPeriods} savePeriod={savePeriod} showToast={showToast} showNew={showNewPeriod} setShowNew={setShowNewPeriod} selectedPeriod={selectedPeriod} setSelectedPeriod={setSelectedPeriod} viewPayslip={viewPayslip} setViewPayslip={setViewPayslip} />}
+        {view === "nomina" && <Nomina employees={employees} periods={periods} setPeriods={setPeriods} savePeriod={savePeriod} deletePeriod={async(pid)=>{ await fbDB.collection("periods").doc(String(pid)).delete(); setPeriods(p=>p.filter(x=>x.periodId!==pid)); }} showToast={showToast} showNew={showNewPeriod} setShowNew={setShowNewPeriod} selectedPeriod={selectedPeriod} setSelectedPeriod={setSelectedPeriod} viewPayslip={viewPayslip} setViewPayslip={setViewPayslip} />}
         {view === "reportes" && <Reportes employees={employees} periods={periods} deletePeriod={async(pid)=>{ await fbDB.collection("periods").doc(String(pid)).delete(); setPeriods(p=>p.filter(x=>x.periodId!==pid)); }} />}
         {view === "formularios" && <Formularios employees={employees} periods={periods} />}
         {view === "prestaciones" && <Prestaciones employees={employees} />}
@@ -883,11 +894,12 @@ function EmployeeModal({ onClose, onSave, initial }) {
   );
 }
 
-function Nomina({ employees, periods, setPeriods, savePeriod, showToast, showNew, setShowNew, selectedPeriod, setSelectedPeriod, viewPayslip, setViewPayslip }) {
+function Nomina({ employees, periods, setPeriods, savePeriod, deletePeriod, showToast, showNew, setShowNew, selectedPeriod, setSelectedPeriod, viewPayslip, setViewPayslip }) {
   const [periodId, setPeriodId] = useState("");
   const [empExtras, setEmpExtras] = useState({});
   const [step, setStep] = useState(1);
   const [noveltyEmp, setNoveltyEmp] = useState(null);
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   const activePeriod = ALL_PERIODS.find(p => p.id === periodId);
   const getEmpData = id => empExtras[id] || { incomes: [], deductions: [] };
@@ -4371,8 +4383,16 @@ function Root() {
     if (!user) return;
     const unsub1 = fbDB.collection('employees').onSnapshot(snap => {
       const data = snap.docs.map(d => ({ ...d.data(), id: d.id }));
-      if (data.length === 0) seedEmployees();
-      else setEmpState(data.sort((a,b) => a.name.localeCompare(b.name)));
+      if (data.length === 0) {
+        seedEmployees();
+      } else {
+        // Merge seed fields into Firestore data so new fields always appear
+        const merged = data.map(emp => {
+          const seed = SEED_EMPLOYEES.find(s => String(s.id) === String(emp.id));
+          return seed ? { ...emp, ...seed } : emp;
+        });
+        setEmpState(merged.sort((a,b) => a.name.localeCompare(b.name)));
+      }
     });
     const unsub2 = fbDB.collection('periods').onSnapshot(snap => {
       setPerState(snap.docs.map(d => ({ ...d.data(), id: d.id }))
@@ -4381,9 +4401,13 @@ function Root() {
     return () => { unsub1(); unsub2(); };
   }, [user]);
 
-  async function seedEmployees() {
+  async function seedEmployees(force = false) {
     const batch = fbDB.batch();
-    SEED_EMPLOYEES.forEach(e => batch.set(fbDB.collection('employees').doc(String(e.id)), e));
+    SEED_EMPLOYEES.forEach(e => batch.set(
+      fbDB.collection('employees').doc(String(e.id)),
+      e,
+      { merge: !force }
+    ));
     await batch.commit();
   }
 
