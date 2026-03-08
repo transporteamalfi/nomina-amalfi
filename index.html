@@ -1755,7 +1755,9 @@ function calcTSS(emp) {
 
 function Reportes({ employees, periods, deletePeriod }) {
   const [tssTab, setTssTab] = React.useState("resumen");
-  const [confirmDelete, setConfirmDelete] = React.useState(null); // "resumen" | "planilla" | "historial"
+  const [confirmDelete, setConfirmDelete] = React.useState(null);
+  const [mesPUP, setMesPUP] = React.useState(null); // "2026-01" | null (base)
+  const MESES_NOM = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
   // Para historial/nómina: usa calcPayroll (por período)
   const rows = employees.map(e => ({ emp: e, calc: calcPayroll(e,[],[]) }));
   const T = rows.reduce((s,{calc}) => ({
@@ -1765,6 +1767,61 @@ function Reportes({ employees, periods, deletePeriod }) {
   }), {afpW:0,sfsW:0,isr:0,afpE:0,sfsE:0,srl:0,inf:0,n:0,c:0});
   // Para PUP/Planilla TSS: siempre mensual (TSS se paga mensual sobre salario completo)
   const tssRows = employees.map(e => ({ emp: e, tss: calcTSS(e) }));
+
+  // Consolida períodos guardados por mes — suma ambas quincenas con sus extras
+  const mesesProcesados = React.useMemo(() => {
+    const byKey = {};
+    periods.forEach(p => {
+      const key = `${p.period?.year}-${String(p.period?.month||1).padStart(2,'0')}`;
+      if (!byKey[key]) byKey[key] = {
+        key, year: p.period?.year, month: p.period?.month,
+        label: `${['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'][(p.period?.month||1)-1]} ${p.period?.year}`,
+        periodos: []
+      };
+      byKey[key].periodos.push(p);
+    });
+    return Object.values(byKey).map(mes => {
+      const allRows = mes.periodos.flatMap(p => p.rows);
+      const byEmp = {};
+      allRows.forEach(({emp, calc}) => {
+        const ced = emp.cedula;
+        if (!byEmp[ced]) byEmp[ced] = {
+          emp, afpWorker:0, sfsWorker:0, afpEmpresa:0, sfsEmpresa:0,
+          srlEmpresa:0, infotep:0, isrPeriodo:0,
+          salario:0, extras:0, totalAPagar:0
+        };
+        const t = byEmp[ced];
+        const extraTotal = (calc.incomesExtra||[]).reduce((s,i)=>s+i.amount,0);
+        t.afpWorker   += calc.afpWorker;
+        t.sfsWorker   += calc.sfsWorker;
+        t.afpEmpresa  += calc.afpEmpresa;
+        t.sfsEmpresa  += calc.sfsEmpresa;
+        t.srlEmpresa  += calc.srlEmpresa;
+        t.infotep     += calc.infotep;
+        t.isrPeriodo  += calc.isrPeriodo;
+        t.salario     += calc.periodSalary;
+        t.extras      += extraTotal;
+        t.totalAPagar += calc.totalAPagar;
+      });
+      const consolidado = Object.values(byEmp);
+      const zero = {afpWorker:0,sfsWorker:0,afpEmpresa:0,sfsEmpresa:0,srlEmpresa:0,infotep:0,isrPeriodo:0,salario:0,extras:0,totalAPagar:0};
+      const totales = consolidado.reduce((s,r) => ({
+        afpWorker:  s.afpWorker  + r.afpWorker,
+        sfsWorker:  s.sfsWorker  + r.sfsWorker,
+        afpEmpresa: s.afpEmpresa + r.afpEmpresa,
+        sfsEmpresa: s.sfsEmpresa + r.sfsEmpresa,
+        srlEmpresa: s.srlEmpresa + r.srlEmpresa,
+        infotep:    s.infotep    + r.infotep,
+        isrPeriodo: s.isrPeriodo + r.isrPeriodo,
+        salario:    s.salario    + r.salario,
+        extras:     s.extras     + r.extras,
+        totalAPagar:s.totalAPagar+ r.totalAPagar,
+      }), zero);
+      return { ...mes, consolidado, totales, nPeriodos: mes.periodos.length };
+    }).sort((a,b) => a.key.localeCompare(b.key));
+  }, [periods]);
+
+  const mesActivo = mesPUP ? mesesProcesados.find(m => m.key === mesPUP) : null;
   const TTSS = tssRows.reduce((s,{tss}) => ({
     sal:   s.sal   + tss.sal,
     afpW:  s.afpW  + tss.afpWorker,
@@ -2086,7 +2143,36 @@ function Reportes({ employees, periods, deletePeriod }) {
             </div>
           </div>
 
-          {/* Tabla planilla */}
+          {/* Selector de mes + tabla PUP */}
+
+          {/* Selector: Base o Mes Procesado */}
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",alignItems:"center",marginBottom:14}}>
+            <span style={{fontWeight:700,color:"#003366",fontSize:13,marginRight:4}}>📊 Vista:</span>
+            <button onClick={()=>setMesPUP(null)}
+              style={{padding:"5px 14px",borderRadius:20,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,
+                background:mesPUP===null?"#003366":"#F0F4FA",color:mesPUP===null?"white":"#5A7090"}}>
+              📋 Salario base
+            </button>
+            {mesesProcesados.map(m=>(
+              <button key={m.key} onClick={()=>setMesPUP(m.key)}
+                style={{padding:"5px 14px",borderRadius:20,border:"none",cursor:"pointer",fontSize:12,fontWeight:700,
+                  background:mesPUP===m.key?"#003366":"#EEF3FA",color:mesPUP===m.key?"white":"#003366"}}>
+                🗓 {m.label} ({m.nPeriodos} quin.)
+              </button>
+            ))}
+          </div>
+
+          {mesPUP && mesActivo && (
+            <div style={{background:"#F0FDF4",border:"1.5px solid #86EFAC",borderRadius:10,
+              padding:"10px 16px",marginBottom:12,fontSize:12,color:"#15803D",display:"flex",gap:16,flexWrap:"wrap"}}>
+              <span>✅ <strong>{mesActivo.label}</strong> — datos reales de nómina</span>
+              <span>👥 {mesActivo.consolidado.length} empleados</span>
+              <span>💵 Salario reportado: <strong>{fmt(mesActivo.totales.salario)}</strong></span>
+              {mesActivo.totales.extras > 0 && <span>➕ Otras remuneraciones: <strong style={{color:"#16A34A"}}>{fmt(mesActivo.totales.extras)}</strong></span>}
+              {mesActivo.totales.isrPeriodo > 0 && <span>🔒 ISR retenido: <strong style={{color:"#DC2626"}}>{fmt(mesActivo.totales.isrPeriodo)}</strong></span>}
+            </div>
+          )}
+
           <div className="card">
             <div className="tw">
               <table style={{fontSize:12}}>
@@ -2096,16 +2182,13 @@ function Reportes({ employees, periods, deletePeriod }) {
                     <th rowSpan={2} style={{verticalAlign:"bottom"}}>Cédula</th>
                     <th rowSpan={2} style={{verticalAlign:"bottom"}}>Nombre Completo</th>
                     <th rowSpan={2} style={{verticalAlign:"bottom"}}>Cargo</th>
-                    <th rowSpan={2} style={{verticalAlign:"bottom"}}>Sal. Mensual</th>
-                    <th colSpan={3} style={{background:"#DBEAFE",color:"#1D4ED8",textAlign:"center"}}>
-                      Empleado
+                    <th rowSpan={2} style={{verticalAlign:"bottom"}}>
+                      {mesActivo ? "Sal. Período" : "Sal. Mensual"}
                     </th>
-                    <th colSpan={4} style={{background:"#EDE9FE",color:"#6D28D9",textAlign:"center"}}>
-                      Empresa
-                    </th>
-                    <th rowSpan={2} style={{background:"#DCFCE7",color:"#15803D",verticalAlign:"bottom"}}>
-                      Total TSS
-                    </th>
+                    {mesActivo && <th rowSpan={2} style={{verticalAlign:"bottom",background:"#FFFBEB",color:"#92400E"}}>Otras Remun.</th>}
+                    <th colSpan={mesActivo?3:3} style={{background:"#DBEAFE",color:"#1D4ED8",textAlign:"center"}}>Empleado</th>
+                    <th colSpan={4} style={{background:"#EDE9FE",color:"#6D28D9",textAlign:"center"}}>Empresa</th>
+                    <th rowSpan={2} style={{background:"#DCFCE7",color:"#15803D",verticalAlign:"bottom"}}>Total TSS</th>
                   </tr>
                   <tr>
                     <th style={{background:"#EFF6FF",color:"#1D4ED8",fontSize:10}}>AFP 2.87%</th>
@@ -2113,50 +2196,94 @@ function Reportes({ employees, periods, deletePeriod }) {
                     <th style={{background:"#EFF6FF",color:"#1D4ED8",fontSize:10}}>ISR</th>
                     <th style={{background:"#F5F3FF",color:"#6D28D9",fontSize:10}}>AFP 7.10%</th>
                     <th style={{background:"#F5F3FF",color:"#6D28D9",fontSize:10}}>SFS 7.09%</th>
-                    <th style={{background:"#F5F3FF",color:"#6D28D9",fontSize:10}}>SRL ~1.1%</th>
+                    <th style={{background:"#F5F3FF",color:"#6D28D9",fontSize:10}}>SRL 1.20%</th>
                     <th style={{background:"#F5F3FF",color:"#6D28D9",fontSize:10}}>INFOTEP 1%</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {tssRows.map(({emp,tss},i) => (
-                    <tr key={emp.id}>
-                      <td style={{color:"#8AA0BC",textAlign:"center"}}>{i+1}</td>
-                      <td style={{fontFamily:"monospace",fontSize:11}}>{emp.cedula}</td>
-                      <td>
-                        <div style={{fontWeight:600}}>{emp.name}</div>
-                        <div style={{fontSize:10,color:"#8AA0BC"}}>{emp.contractType}</div>
-                      </td>
-                      <td><span className="badge bb" style={{fontSize:10}}>{emp.position}</span></td>
-                      <td style={{fontWeight:600}}>{fmt(tss.sal)}</td>
-                      <td style={{color:"#1D4ED8",fontWeight:600,background:"#F8FBFF"}}>{fmt(tss.afpWorker)}</td>
-                      <td style={{color:"#1D4ED8",fontWeight:600,background:"#F8FBFF"}}>{fmt(tss.sfsWorker)}</td>
-                      <td style={{color:"#1D4ED8",fontWeight:600,background:"#F8FBFF"}}>
-                        <span className="tm">—</span>
-                      </td>
-                      <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(tss.afpEmpresa)}</td>
-                      <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(tss.sfsEmpresa)}</td>
-                      <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(tss.srlEmpresa)}</td>
-                      <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(tss.infotep)}</td>
-                      <td style={{fontWeight:800,color:"#15803D",background:"#F0FDF4"}}>
-                        {fmt(tss.totalTSS)}
-                      </td>
-                    </tr>
-                  ))}
+                  {mesActivo
+                    ? mesActivo.consolidado.map((r,i) => (
+                        <tr key={r.emp.cedula}>
+                          <td style={{color:"#8AA0BC",textAlign:"center"}}>{i+1}</td>
+                          <td style={{fontFamily:"monospace",fontSize:11}}>{r.emp.cedula}</td>
+                          <td>
+                            <div style={{fontWeight:600}}>{r.emp.name}</div>
+                            <div style={{fontSize:10,color:"#8AA0BC"}}>{r.emp.contractType}</div>
+                          </td>
+                          <td><span className="badge bb" style={{fontSize:10}}>{r.emp.position}</span></td>
+                          <td style={{fontWeight:600}}>{fmt(r.salario)}</td>
+                          <td style={{background:"#FFFBEB",fontWeight:600,color:r.extras>0?"#92400E":"#9CA3AF"}}>
+                            {r.extras>0?fmt(r.extras):"—"}
+                          </td>
+                          <td style={{color:"#1D4ED8",fontWeight:600,background:"#F8FBFF"}}>{fmt(r.afpWorker)}</td>
+                          <td style={{color:"#1D4ED8",fontWeight:600,background:"#F8FBFF"}}>{fmt(r.sfsWorker)}</td>
+                          <td style={{color:"#1D4ED8",fontWeight:600,background:"#F8FBFF"}}>
+                            {r.isrPeriodo>0?<span style={{color:"#DC2626",fontWeight:700}}>{fmt(r.isrPeriodo)}</span>:<span className="tm">—</span>}
+                          </td>
+                          <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(r.afpEmpresa)}</td>
+                          <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(r.sfsEmpresa)}</td>
+                          <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(r.srlEmpresa)}</td>
+                          <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(r.infotep)}</td>
+                          <td style={{fontWeight:800,color:"#15803D",background:"#F0FDF4"}}>
+                            {fmt(r.afpWorker+r.sfsWorker+r.afpEmpresa+r.sfsEmpresa+r.srlEmpresa+r.infotep)}
+                          </td>
+                        </tr>
+                      ))
+                    : tssRows.map(({emp,tss},i) => (
+                        <tr key={emp.id}>
+                          <td style={{color:"#8AA0BC",textAlign:"center"}}>{i+1}</td>
+                          <td style={{fontFamily:"monospace",fontSize:11}}>{emp.cedula}</td>
+                          <td>
+                            <div style={{fontWeight:600}}>{emp.name}</div>
+                            <div style={{fontSize:10,color:"#8AA0BC"}}>{emp.contractType}</div>
+                          </td>
+                          <td><span className="badge bb" style={{fontSize:10}}>{emp.position}</span></td>
+                          <td style={{fontWeight:600}}>{fmt(tss.sal)}</td>
+                          <td style={{color:"#1D4ED8",fontWeight:600,background:"#F8FBFF"}}>{fmt(tss.afpWorker)}</td>
+                          <td style={{color:"#1D4ED8",fontWeight:600,background:"#F8FBFF"}}>{fmt(tss.sfsWorker)}</td>
+                          <td style={{color:"#9CA3AF",background:"#F8FBFF"}}><span className="tm">—</span></td>
+                          <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(tss.afpEmpresa)}</td>
+                          <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(tss.sfsEmpresa)}</td>
+                          <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(tss.srlEmpresa)}</td>
+                          <td style={{color:"#6D28D9",fontWeight:600,background:"#FAF8FF"}}>{fmt(tss.infotep)}</td>
+                          <td style={{fontWeight:800,color:"#15803D",background:"#F0FDF4"}}>
+                            {fmt(tss.totalTSS)}
+                          </td>
+                        </tr>
+                      ))
+                  }
                   {/* Fila de totales */}
-                  <tr style={{background:"#EEF3FA",fontWeight:800,fontSize:12,borderTop:"2px solid #003366"}}>
-                    <td colSpan={4} style={{textAlign:"right",color:"#003366",fontFamily:"Montserrat"}}>TOTALES →</td>
-                    <td style={{fontWeight:800,color:"#003366"}}>{fmt(TTSS.sal)}</td>
-                    <td style={{color:"#1D4ED8",background:"#EBF4FF"}}>{fmt(TTSS.afpW)}</td>
-                    <td style={{color:"#1D4ED8",background:"#EBF4FF"}}>{fmt(TTSS.sfsW)}</td>
-                    <td style={{color:"#9CA3AF",background:"#EBF4FF"}}>—</td>
-                    <td style={{color:"#6D28D9",background:"#F0EBFF"}}>{fmt(TTSS.afpE)}</td>
-                    <td style={{color:"#6D28D9",background:"#F0EBFF"}}>{fmt(TTSS.sfsE)}</td>
-                    <td style={{color:"#6D28D9",background:"#F0EBFF"}}>{fmt(TTSS.srl)}</td>
-                    <td style={{color:"#6D28D9",background:"#F0EBFF"}}>{fmt(TTSS.inf)}</td>
-                    <td style={{color:"#15803D",background:"#DCFCE7",fontFamily:"Montserrat",fontSize:13}}>
-                      {fmt(TTSS.totConInf)}
-                    </td>
-                  </tr>
+                  {mesActivo
+                    ? <tr style={{background:"#EEF3FA",fontWeight:800,fontSize:12,borderTop:"2px solid #003366"}}>
+                        <td colSpan={4} style={{textAlign:"right",color:"#003366",fontFamily:"Montserrat"}}>TOTALES →</td>
+                        <td style={{fontWeight:800,color:"#003366"}}>{fmt(mesActivo.totales.salario)}</td>
+                        <td style={{color:"#92400E",background:"#FFF9E6"}}>{mesActivo.totales.extras>0?fmt(mesActivo.totales.extras):"—"}</td>
+                        <td style={{color:"#1D4ED8",background:"#EBF4FF"}}>{fmt(mesActivo.totales.afpWorker)}</td>
+                        <td style={{color:"#1D4ED8",background:"#EBF4FF"}}>{fmt(mesActivo.totales.sfsWorker)}</td>
+                        <td style={{color:"#DC2626",background:"#EBF4FF"}}>{mesActivo.totales.isrPeriodo>0?fmt(mesActivo.totales.isrPeriodo):"—"}</td>
+                        <td style={{color:"#6D28D9",background:"#F0EBFF"}}>{fmt(mesActivo.totales.afpEmpresa)}</td>
+                        <td style={{color:"#6D28D9",background:"#F0EBFF"}}>{fmt(mesActivo.totales.sfsEmpresa)}</td>
+                        <td style={{color:"#6D28D9",background:"#F0EBFF"}}>{fmt(mesActivo.totales.srlEmpresa)}</td>
+                        <td style={{color:"#6D28D9",background:"#F0EBFF"}}>{fmt(mesActivo.totales.infotep)}</td>
+                        <td style={{color:"#15803D",background:"#DCFCE7",fontFamily:"Montserrat",fontSize:13}}>
+                          {fmt(mesActivo.totales.afpWorker+mesActivo.totales.sfsWorker+mesActivo.totales.afpEmpresa+mesActivo.totales.sfsEmpresa+mesActivo.totales.srlEmpresa+mesActivo.totales.infotep)}
+                        </td>
+                      </tr>
+                    : <tr style={{background:"#EEF3FA",fontWeight:800,fontSize:12,borderTop:"2px solid #003366"}}>
+                        <td colSpan={4} style={{textAlign:"right",color:"#003366",fontFamily:"Montserrat"}}>TOTALES →</td>
+                        <td style={{fontWeight:800,color:"#003366"}}>{fmt(TTSS.sal)}</td>
+                        <td style={{color:"#1D4ED8",background:"#EBF4FF"}}>{fmt(TTSS.afpW)}</td>
+                        <td style={{color:"#1D4ED8",background:"#EBF4FF"}}>{fmt(TTSS.sfsW)}</td>
+                        <td style={{color:"#9CA3AF",background:"#EBF4FF"}}>—</td>
+                        <td style={{color:"#6D28D9",background:"#F0EBFF"}}>{fmt(TTSS.afpE)}</td>
+                        <td style={{color:"#6D28D9",background:"#F0EBFF"}}>{fmt(TTSS.sfsE)}</td>
+                        <td style={{color:"#6D28D9",background:"#F0EBFF"}}>{fmt(TTSS.srl)}</td>
+                        <td style={{color:"#6D28D9",background:"#F0EBFF"}}>{fmt(TTSS.inf)}</td>
+                        <td style={{color:"#15803D",background:"#DCFCE7",fontFamily:"Montserrat",fontSize:13}}>
+                          {fmt(TTSS.totConInf)}
+                        </td>
+                      </tr>
+                  }
                 </tbody>
               </table>
             </div>
@@ -2182,38 +2309,66 @@ function Reportes({ employees, periods, deletePeriod }) {
             </div>
           </div>
 
-          {/* Historial por período si hay nóminas procesadas */}
-          {periods.length > 0 && (
+          {/* Meses procesados: vista mensual consolidada con exportar */}
+          {mesesProcesados.length > 0 && (
             <div className="card mt3">
-              <div style={{fontFamily:"Montserrat",fontWeight:700,color:"#003366",marginBottom:14}}>
-                📂 Exportar Planilla por Período Específico
+              <div style={{fontFamily:"Montserrat",fontWeight:700,color:"#003366",marginBottom:4}}>
+                📂 Meses Procesados — Totales Completos
+              </div>
+              <div style={{fontSize:12,color:"#5A7090",marginBottom:14}}>
+                Suma de ambas quincenas + otras remuneraciones. Haz clic en un mes para verlo en la tabla arriba.
               </div>
               <div className="tw">
-                <table>
-                  <thead><tr><th>Período</th><th>Empleados</th><th>AFP Total</th><th>SFS Total</th><th>ISR</th><th>Total TSS</th><th>Exportar</th></tr></thead>
+                <table style={{fontSize:12}}>
+                  <thead>
+                    <tr>
+                      <th>Mes</th><th>Quincenas</th><th>Empleados</th>
+                      <th style={{background:"#FFFBEB",color:"#92400E"}}>Otras Remun.</th>
+                      <th style={{color:"#1D4ED8"}}>AFP Total</th>
+                      <th style={{color:"#0891B2"}}>SFS Total</th>
+                      <th style={{color:"#DC2626"}}>ISR</th>
+                      <th style={{color:"#7C3AED"}}>SRL+INFOTEP</th>
+                      <th style={{color:"#15803D"}}>Total TSS</th>
+                      <th>Exportar</th>
+                    </tr>
+                  </thead>
                   <tbody>
-                    {periods.map(p => {
-                      const pa=p.rows.reduce((s,r)=>s+r.calc.afpWorker+r.calc.afpEmpresa,0);
-                      const ps=p.rows.reduce((s,r)=>s+r.calc.sfsWorker+r.calc.sfsEmpresa,0);
-                      const pi=p.rows.reduce((s,r)=>s+r.calc.isrPeriodo,0);
-                      const pt=p.rows.reduce((s,r)=>s+r.calc.afpWorker+r.calc.afpEmpresa+r.calc.sfsWorker+r.calc.sfsEmpresa+r.calc.srlEmpresa+r.calc.infotep,0);
+                    {mesesProcesados.map(m => {
+                      const afpTotal = m.totales.afpWorker+m.totales.afpEmpresa;
+                      const sfsTotal = m.totales.sfsWorker+m.totales.sfsEmpresa;
+                      const srlInf   = m.totales.srlEmpresa+m.totales.infotep;
+                      const tssTotal = afpTotal+sfsTotal+srlInf;
+                      const allRows  = m.periodos.flatMap(p=>p.rows);
+                      // Build merged period object for export
+                      const pMerged  = { period:{label:`${m.label} (completo)`,year:m.year,month:m.month}, rows:allRows };
                       return (
-                        <tr key={p.periodId}>
-                          <td><strong>{p.period?.label}</strong> <span className="tm">{p.period?.year}</span></td>
-                          <td>{p.rows.length}</td>
-                          <td style={{color:"#003366",fontWeight:600}}>{fmt(pa)}</td>
-                          <td style={{color:"#0891B2",fontWeight:600}}>{fmt(ps)}</td>
-                          <td style={{color:"#DC2626",fontWeight:600}}>{pi>0?fmt(pi):"—"}</td>
-                          <td style={{color:"#15803D",fontWeight:800}}>{fmt(pt)}</td>
-                          <td style={{display:"flex",gap:6}}>
-                            <button className="btn bsm bp1" onClick={()=>exportTSS(p)}>
+                        <tr key={m.key} style={{cursor:"pointer",background:mesPUP===m.key?"#EEF8FF":"white"}}
+                          onClick={()=>setMesPUP(mesPUP===m.key?null:m.key)}>
+                          <td style={{fontWeight:700,color:"#003366"}}>
+                            {mesPUP===m.key && <span style={{marginRight:4}}>▶</span>}
+                            {m.label}
+                          </td>
+                          <td style={{textAlign:"center"}}>{m.nPeriodos}</td>
+                          <td style={{textAlign:"center"}}>{m.consolidado.length}</td>
+                          <td style={{background:"#FFFBEB",color:m.totales.extras>0?"#92400E":"#9CA3AF",fontWeight:m.totales.extras>0?700:400}}>
+                            {m.totales.extras>0?fmt(m.totales.extras):"—"}
+                          </td>
+                          <td style={{color:"#1D4ED8",fontWeight:600}}>{fmt(afpTotal)}</td>
+                          <td style={{color:"#0891B2",fontWeight:600}}>{fmt(sfsTotal)}</td>
+                          <td style={{color:m.totales.isrPeriodo>0?"#DC2626":"#9CA3AF"}}>
+                            {m.totales.isrPeriodo>0?fmt(m.totales.isrPeriodo):"—"}
+                          </td>
+                          <td style={{color:"#7C3AED",fontWeight:600}}>{fmt(srlInf)}</td>
+                          <td style={{color:"#15803D",fontWeight:800,fontFamily:"Montserrat"}}>{fmt(tssTotal)}</td>
+                          <td onClick={e=>e.stopPropagation()} style={{display:"flex",gap:5,flexWrap:"nowrap"}}>
+                            <button className="btn bsm bp1" onClick={()=>exportTSS(pMerged)} title="Exportar CSV mes completo">
                               ⬇️ CSV
                             </button>
-                            <button className="btn bsm" onClick={()=>generateAMTxt(p)}
+                            <button className="btn bsm" onClick={()=>generateAMTxt(pMerged)}
                               style={{background:"#16A34A",color:"white",border:"none",
                                 padding:"5px 10px",borderRadius:6,cursor:"pointer",
-                                fontWeight:700,fontSize:12}}>
-                              📥 AM .txt
+                                fontWeight:700,fontSize:12}} title="Exportar AM.txt mes completo">
+                              📥 AM
                             </button>
                           </td>
                         </tr>
