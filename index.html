@@ -499,6 +499,7 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
           <div style={{marginLeft:"auto",display:"flex",gap:4,alignItems:"center"}}>
             <span style={{color:"#A0AEC0",fontSize:11,marginRight:4}}>{userEmail}</span>
             <button onClick={async()=>{ if(window.confirm("¿Re-cargar datos de los 18 empleados? Esto actualizará campos faltantes sin borrar nóminas.")) { const batch=fbDB.batch(); SEED_EMPLOYEES.forEach(e => batch.set(fbDB.collection("employees").doc(String(e.id)), e)); await batch.commit(); showToast("✅ Empleados actualizados correctamente","success"); } }} style={{background:"#E8A020",color:"white",border:"none",padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",marginRight:6}} title="Recargar datos empleados">🔄 Sync Empleados</button>
+          <button onClick={restoreNominasEnero} style={{background:"#16A34A",color:"white",border:"none",padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",marginRight:6}} title="Restaurar nóminas enero 2026">🔁 Restaurar Ene-2026</button>
           <button className="nb" onClick={onLogout} style={{color:"#FF8888"}} title="Cerrar sesión">⏏ Salir</button>
           </div>
         </nav>
@@ -4860,6 +4861,61 @@ function Root() {
 
   async function savePeriod(period) {
     await fbDB.collection('periods').doc(String(period.periodId)).set(period);
+  }
+
+  async function restoreNominasEnero() {
+    if (!window.confirm('¿Restaurar las nóminas de enero 2026 (1ra y 2da quincena)? Esto sobrescribirá los datos actuales de esos períodos.')) return;
+    // Datos exactos de ambas quincenas — reconstruidos de los registros
+    const p1 = ALL_PERIODS.find(p => p.id === '2026-1-1'); // 1 Ene - 15 Ene
+    const p2 = ALL_PERIODS.find(p => p.id === '2026-1-2'); // 16 Ene - 31 Ene
+    // Extras por cédula — { cedula: [{type, amount, desc}] }
+    const extrasQ1 = {
+      '22900069414': [{type:'transporte_extra', amount:7000,   desc:'Servicios de Transporte Extra'}],
+      '07600161546': [{type:'transporte_extra', amount:2000,   desc:'Servicios de Transporte Extra'}],
+      '22500222868': [{type:'transporte_extra', amount:6000,   desc:'Servicios de Transporte Extra'}],
+    };
+    const extrasQ2 = {
+      '22900069414': [{type:'transporte_extra', amount:8700,    desc:'Servicios de Transporte Extra'}],
+      '07600128248': [{type:'transporte_extra', amount:6400,    desc:'Servicios de Transporte Extra'}],
+      '40225914395': [{type:'transporte_extra', amount:1500,    desc:'Servicios de Transporte Extra'}],
+      '40224305553': [{type:'transporte_extra', amount:4500,    desc:'Servicios de Transporte Extra'}],
+      '00117419952': [{type:'transporte_extra', amount:26098.62,desc:'Servicios de Transporte Extra'}],
+      '00108633728': [{type:'transporte_extra', amount:12074.91,desc:'Servicios de Transporte Extra'}],
+      '00800260077': [{type:'transporte_extra', amount:8500,    desc:'Servicios de Transporte Extra'}],
+      '40215784451': [{type:'transporte_extra', amount:8500,    desc:'Servicios de Transporte Extra'}],
+      '00108444787': [{type:'transporte_extra', amount:1500,    desc:'Servicios de Transporte Extra'}],
+      '07600161546': [{type:'transporte_extra', amount:11100,   desc:'Servicios de Transporte Extra'}],
+      '40222131076': [{type:'transporte_extra', amount:1500,    desc:'Servicios de Transporte Extra'}],
+      '22500222868': [{type:'transporte_extra', amount:14206.23,desc:'Servicios de Transporte Extra'}],
+    };
+    // Empleados excluidos Q1: Fausto (07600128248) no estaba en 1ra quincena
+    const excludedQ1 = ['07600128248'];
+    const makeRows = (extraMap, excluded=[]) =>
+      employees
+        .filter(e => !excluded.includes(e.cedula))
+        .map(e => ({
+          emp: e,
+          calc: calcPayroll(e, extraMap[e.cedula]||[], [])
+        }));
+    const period1 = {
+      periodId: 'periodo-2026-1-1',
+      period: p1,
+      createdAt: '2026-02-04T10:00:00.000Z',
+      rows: makeRows(extrasQ1, excludedQ1)
+    };
+    const period2 = {
+      periodId: 'periodo-2026-1-2',
+      period: p2,
+      createdAt: '2026-02-04T10:30:00.000Z',
+      rows: makeRows(extrasQ2, [])
+    };
+    await savePeriod(period1);
+    await savePeriod(period2);
+    setPeriods(prev => {
+      const filtered = prev.filter(x => x.periodId !== period1.periodId && x.periodId !== period2.periodId);
+      return [...filtered, period1, period2];
+    });
+    alert('✅ Nóminas de enero 2026 restauradas correctamente.');
   }
 
   async function handleLogin(email, password) {
