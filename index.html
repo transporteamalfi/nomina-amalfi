@@ -272,10 +272,15 @@ const SEED_EMPLOYEES = [
 function generatePeriods() {
   const mn = ["Ene","Feb","Mar","Abr","May","Jun","Jul","Ago","Sep","Oct","Nov","Dic"];
   const dl = [31,28,31,30,31,30,31,31,30,31,30,31];
-  return mn.flatMap((m, i) => [
-    { id:`2026-${i+1}-1`, label:`1 ${m} - 15 ${m}`,      year:2026, month:i+1, half:1 },
-    { id:`2026-${i+1}-2`, label:`16 ${m} - ${dl[i]} ${m}`, year:2026, month:i+1, half:2 },
-  ]);
+  return mn.flatMap((m, i) => {
+    const mm = String(i+1).padStart(2,"0");
+    return [
+      { id:`2026-${i+1}-1`, label:`1 ${m} - 15 ${m}`,      year:2026, month:i+1, half:1,
+        startDate:`2026-${mm}-01`, endDate:`2026-${mm}-15` },
+      { id:`2026-${i+1}-2`, label:`16 ${m} - ${dl[i]} ${m}`, year:2026, month:i+1, half:2,
+        startDate:`2026-${mm}-16`, endDate:`2026-${mm}-${String(dl[i]).padStart(2,"0")}` },
+    ];
+  });
 }
 const ALL_PERIODS = generatePeriods();
 
@@ -900,12 +905,32 @@ function Nomina({ employees, periods, setPeriods, savePeriod, deletePeriod, show
   const [step, setStep] = useState(1);
   const [noveltyEmp, setNoveltyEmp] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
+  const [excluded, setExcluded] = useState(new Set()); // IDs excluidos del período actual
 
   const activePeriod = ALL_PERIODS.find(p => p.id === periodId);
   const getEmpData = id => empExtras[id] || { incomes: [], deductions: [] };
   const setEmpData = (id, data) => setEmpExtras(p => ({ ...p, [id]: data }));
 
-  const rows = employees.map(e => { const d = getEmpData(e.id); return { emp: e, calc: calcPayroll(e, d.incomes||[], d.deductions||[]), extras: d }; });
+  const toggleExclude = (id) => setExcluded(prev => {
+    const next = new Set(prev);
+    if (next.has(id)) next.delete(id); else next.add(id);
+    return next;
+  });
+
+  // Auto-exclude employees hired after the period start date
+  useEffect(() => {
+    if (!activePeriod) return;
+    const autoExclude = new Set();
+    employees.forEach(e => {
+      if (e.hireDate && e.hireDate > activePeriod.startDate) {
+        autoExclude.add(String(e.id));
+      }
+    });
+    setExcluded(autoExclude);
+  }, [periodId]);
+
+  const allRows = employees.map(e => { const d = getEmpData(e.id); return { emp: e, calc: calcPayroll(e, d.incomes||[], d.deductions||[]), extras: d }; });
+  const rows = allRows.filter(r => !excluded.has(String(r.emp.id)));
   const totals = rows.reduce((s,r) => ({ b:s.b+r.calc.periodSalary, n:s.n+r.calc.totalAPagar, d:s.d+r.calc.totalDeductions, c:s.c+r.calc.costEmpresa }), { b:0,n:0,d:0,c:0 });
 
   const handleSave = () => {
@@ -954,7 +979,7 @@ function Nomina({ employees, periods, setPeriods, savePeriod, deletePeriod, show
           {step === 2 && (
             <>
               <div className="fjb mb3">
-                <div><div style={{fontFamily:"Montserrat",fontSize:18,fontWeight:700,color:"#003366"}}>{activePeriod?.label} {activePeriod?.year}</div><div className="tm">{employees.length} empleados</div></div>
+                <div><div style={{fontFamily:"Montserrat",fontSize:18,fontWeight:700,color:"#003366"}}>{activePeriod?.label} {activePeriod?.year}</div><div className="tm">{employees.length - excluded.size} de {employees.length} empleados incluidos {excluded.size > 0 && <span style={{color:"#DC2626",fontWeight:700}}>({excluded.size} excluidos)</span>}</div></div>
                 <div className="fc" style={{gap:10,flexWrap:"wrap"}}>
                   {[{l:"Bruto",v:totals.b,c:"#003366"},{l:"Descuentos",v:totals.d,c:"#DC2626"},{l:"Neto a Pagar",v:totals.n,c:"#16A34A"},{l:"Costo Empresa",v:totals.c,c:"#7C3AED"}].map((s,i) => (
                     <div key={i} className="csm" style={{textAlign:"center",minWidth:120}}><div style={{fontSize:11,color:"#5A7090",marginBottom:2}}>{s.l}</div><div style={{fontWeight:800,color:s.c,fontSize:14,fontFamily:"Montserrat"}}>{fmt(s.v)}</div></div>
@@ -964,34 +989,53 @@ function Nomina({ employees, periods, setPeriods, savePeriod, deletePeriod, show
               <div style={{marginBottom:18}}><div className="tm mb1">Progreso de cálculo — {employees.length} empleados</div><div className="pg"><div className="pf" style={{width:"100%"}}></div></div></div>
               <div className="tw">
                 <table>
-                  <thead><tr><th>Empleado</th><th>Identificación</th><th>Salario</th><th>Ingresos Adicionales</th><th>Deducciones</th><th className="tr">Total a Pagar</th><th>Estado</th></tr></thead>
+                  <thead><tr><th>Empleado</th><th>Identificación</th><th>Salario</th><th>Ingresos Adicionales</th><th>Deducciones</th><th className="tr">Total a Pagar</th><th>Estado</th><th>Incluir</th></tr></thead>
                   <tbody>
-                    {rows.map(({emp,calc,extras}) => {
+                    {allRows.map(({emp,calc,extras}) => {
+                      const isExcluded = excluded.has(String(emp.id));
                       const incs = extras.incomes||[], deds = extras.deductions||[];
                       const ei = incs.reduce((s,i)=>s+i.amount,0);
                       return (
-                        <tr key={emp.id}>
-                          <td><div style={{fontWeight:600}}>{emp.name}</div><div className="tm">{emp.position}</div></td>
+                        <tr key={emp.id} style={{opacity: isExcluded ? 0.4 : 1, background: isExcluded ? "#FEF2F2" : ""}}>
+                          <td>
+                            <div style={{fontWeight:600}}>{emp.name}</div>
+                            <div className="tm">{emp.position}</div>
+                            {isExcluded && <div style={{fontSize:11,color:"#DC2626",fontWeight:700}}>⛔ Excluido del período</div>}
+                          </td>
                           <td>{emp.cedula}</td>
                           <td>{fmt(calc.periodSalary)}</td>
                           <td>
-                            <div className="fc" style={{gap:6}}>
-                              <span className="inc">{ei>0?`+${fmt(ei)}`:fmt(0)}</span>
-                              <button className="btn bsm bgh" onClick={() => setNoveltyEmp({emp,mode:"income"})}>
-                                + Ingresos {incs.length>0&&<span className="badge bg" style={{marginLeft:3}}>{incs.length}</span>}
-                              </button>
-                            </div>
+                            {!isExcluded ? (
+                              <div className="fc" style={{gap:6}}>
+                                <span className="inc">{ei>0?`+${fmt(ei)}`:fmt(0)}</span>
+                                <button className="btn bsm bgh" onClick={() => setNoveltyEmp({emp,mode:"income"})}>
+                                  + Ingresos {incs.length>0&&<span className="badge bg" style={{marginLeft:3}}>{incs.length}</span>}
+                                </button>
+                              </div>
+                            ) : <span className="tm">—</span>}
                           </td>
                           <td>
-                            <div className="fc" style={{gap:6}}>
-                              <span className="dec">-{fmt(calc.totalDeductions)}</span>
-                              <button className="btn bsm bgh" onClick={() => setNoveltyEmp({emp,mode:"deduction"})}>
-                                − Deduc. {deds.length>0&&<span className="badge bo" style={{marginLeft:3}}>{deds.length}</span>}
-                              </button>
-                            </div>
+                            {!isExcluded ? (
+                              <div className="fc" style={{gap:6}}>
+                                <span className="dec">-{fmt(calc.totalDeductions)}</span>
+                                <button className="btn bsm bgh" onClick={() => setNoveltyEmp({emp,mode:"deduction"})}>
+                                  − Deduc. {deds.length>0&&<span className="badge bo" style={{marginLeft:3}}>{deds.length}</span>}
+                                </button>
+                              </div>
+                            ) : <span className="tm">—</span>}
                           </td>
-                          <td className="tr inc tb" style={{fontSize:15}}>{fmt(calc.totalAPagar)}</td>
-                          <td><span className="badge bg">● Calculado</span></td>
+                          <td className="tr inc tb" style={{fontSize:15}}>{isExcluded ? <span className="tm">—</span> : fmt(calc.totalAPagar)}</td>
+                          <td>{isExcluded ? <span className="badge bo">⛔ Excluido</span> : <span className="badge bg">● Calculado</span>}</td>
+                          <td>
+                            <button onClick={() => toggleExclude(String(emp.id))} style={{
+                              padding:"5px 10px", border:"none", borderRadius:7, cursor:"pointer",
+                              fontWeight:700, fontSize:12,
+                              background: isExcluded ? "#DCFCE7" : "#FEF2F2",
+                              color: isExcluded ? "#16A34A" : "#DC2626"
+                            }}>
+                              {isExcluded ? "✅ Incluir" : "⛔ Excluir"}
+                            </button>
+                          </td>
                         </tr>
                       );
                     })}
@@ -1014,7 +1058,7 @@ function Nomina({ employees, periods, setPeriods, savePeriod, deletePeriod, show
               <div style={{fontFamily:"Montserrat",fontSize:22,fontWeight:700,color:"#003366",marginBottom:5}}>¡Nómina Confirmada!</div>
               <div className="tm mb2">Período {selectedPeriod.period?.label} {selectedPeriod.period?.year}</div>
               <div style={{fontFamily:"Montserrat",fontSize:32,fontWeight:800,color:"#16A34A",margin:"14px 0"}}>{fmt(totals.n)}</div>
-              <div className="tm">Total neto pagado a {employees.length} colaboradores</div>
+              <div className="tm">Total neto pagado a {rows.length} de {employees.length} colaboradores{excluded.size > 0 ? ` (${excluded.size} excluidos)` : ""}</div>
               <button className="btn bol mt3" onClick={()=>setShowNew(false)}>Cerrar</button>
             </div>
           )}
@@ -1846,46 +1890,7 @@ function Reportes({ employees, periods, deletePeriod }) {
         </>
       )}
 
-      {/* ── Recordatorios de Pago ── */}
-      {reminders.pagos && reminders.pagos.length > 0 && (
-        <div className="card" style={{borderLeft:"4px solid #7B4F00",marginBottom:16}}>
-          <div style={{fontFamily:"Montserrat",fontWeight:700,color:"#7B4F00",marginBottom:12,fontSize:15}}>
-            💰 Recordatorios de Pago y Obligaciones Laborales
-          </div>
-          {reminders.pagos.map((p,i) => {
-            const COLOR = {tss:"#6B21A8",isr:"#DC2626",navidad:"#1A6B3A",bonif:"#7B4F00",dgt3:"#003366",vac:"#1E40AF"};
-            const ICON  = {tss:"🏦",isr:"📋",navidad:"🎄",bonif:"🏆",dgt3:"📋",vac:"🏖️"};
-            const c = COLOR[p.tipo]||"#374151";
-            const overdue = p.diff < 0;
-            const urgent  = p.diff >= 0 && p.diff <= 7;
-            const bg = overdue ? "#FEF2F2" : urgent ? "#FFF7ED" : "#F8FAFF";
-            const border = overdue ? "#FECACA" : urgent ? "#FED7AA" : "#E8EEF8";
-            return (
-              <div key={i} style={{background:bg,border:`1px solid ${border}`,borderRadius:10,
-                padding:"10px 14px",marginBottom:8,display:"flex",gap:12,alignItems:"center"}}>
-                <div style={{fontSize:22,flexShrink:0}}>{ICON[p.tipo]||"📅"}</div>
-                <div style={{flex:1}}>
-                  <div style={{fontWeight:700,color:c,fontSize:13,marginBottom:2}}>{p.titulo}</div>
-                  <div style={{fontSize:12,color:"#5A7090"}}>{p.desc}</div>
-                </div>
-                <div style={{textAlign:"right",flexShrink:0}}>
-                  <div style={{fontSize:12,color:"#8090A0"}}>{p.fecha.toLocaleDateString("es-DO",{day:"2-digit",month:"2-digit",year:"numeric"})}</div>
-                  <div style={{fontWeight:800,fontSize:13,
-                    color:overdue?"#DC2626":urgent?"#F97316":"#003366"}}>
-                    {overdue ? `Venció hace ${Math.abs(p.diff)} días` : p.diff===0 ? "¡Hoy!" : `En ${p.diff} días`}
-                  </div>
-                </div>
-                {(overdue||urgent) && (
-                  <span style={{background:overdue?"#DC2626":"#F97316",color:"white",
-                    borderRadius:8,padding:"3px 8px",fontSize:11,fontWeight:700,flexShrink:0}}>
-                    {overdue?"VENCIDO":"URGENTE"}
-                  </span>
-                )}
-              </div>
-            );
-          })}
-        </div>
-      )}
+
 
 
       {/* ── TAB: PLANILLA TSS ── */}
