@@ -3926,9 +3926,9 @@ function Calendario() {
       // DGII día 20
       add(`${y}-${mm}-20`, 'IT-1 — ITBIS Mensual', 'Impuesto sobre Transferencia de Bienes Industrializados y Servicios · Oficina Virtual DGII', 'itbis');
 
-      // Nómina quincenal
-      add(`${y}-${mm}-10`, '💵 Pago Nómina — 1ra Quincena', 'Pago a empleados correspondiente al 1 al 15 del mes', 'nomina');
-      add(`${y}-${mm}-${String(Math.min(25, ult)).padStart(2,'0')}`, '💵 Pago Nómina — 2da Quincena', 'Pago a empleados correspondiente al 16 al fin del mes', 'nomina');
+      // Nómina quincenal — pago el día 15 y último día del mes
+      add(`${y}-${mm}-15`, '💵 Pago Nómina — 1ra Quincena', 'Pago a empleados correspondiente al período 1 al 15 del mes', 'nomina');
+      add(`${y}-${mm}-${String(ult).padStart(2,'0')}`, '💵 Pago Nómina — 2da Quincena', 'Pago a empleados correspondiente al período 16 al ${ult} del mes', 'nomina');
     }
 
     // Anuales
