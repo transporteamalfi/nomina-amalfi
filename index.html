@@ -513,12 +513,13 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
   // ── Restaurar nóminas febrero 2026 ────────────────────────────────────────
   const restoreNominasFebrero = async () => {
     if (!window.confirm('¿Restaurar las nóminas de febrero 2026 (1ra y 2da quincena)?\nEsto sobrescribirá datos existentes de esos períodos.')) return;
-    const p1 = ALL_PERIODS.find(p => p.id === '2026-2-1');
-    const p2 = ALL_PERIODS.find(p => p.id === '2026-2-2');
+    // Hardcoded para evitar que ALL_PERIODS.find() devuelva undefined
+    const p1 = { id:'2026-2-1', label:'1 Feb - 15 Feb',  year:2026, month:2, half:1, startDate:'2026-02-01', endDate:'2026-02-15' };
+    const p2 = { id:'2026-2-2', label:'16 Feb - 28 Feb', year:2026, month:2, half:2, startDate:'2026-02-16', endDate:'2026-02-28' };
     // Santo y Obispo tenían salario 18,067.80 en febrero (el aumento a 18,421.20 es desde marzo)
     const FEB_SALARIES = { '00108444787': 18067.80, '00108633728': 18067.80 };
     const empFeb = (e) => FEB_SALARIES[e.cedula] ? {...e, salary: FEB_SALARIES[e.cedula]} : e;
-    // Q1 (1-15 Feb): vacaciones cotizables + transporte no cotizable
+    // Q1 (1-15 Feb)
     const extrasQ1 = {
       '22900069414': [{type:'transporte_extra', amount:11500,   desc:'Servicios de Transporte Extra'}],
       '40225914395': [{type:'vacaciones',       amount:6894.46, desc:'Vacaciones'},{type:'transporte_extra',amount:13500,desc:'Servicios de Transporte Extra'}],
@@ -527,9 +528,9 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
       '07600161546': [{type:'transporte_extra', amount:2000,    desc:'Servicios de Transporte Extra'}],
       '40222131076': [{type:'vacaciones',       amount:3499.79, desc:'Vacaciones'},{type:'transporte_extra',amount:20000,desc:'Servicios de Transporte Extra'}],
       '22500222868': [{type:'transporte_extra', amount:9000,    desc:'Servicios de Transporte Extra'}],
-      '22900254974': [{type:'vacaciones',       amount:831.20,  desc:'Vacaciones'},{type:'transporte_extra',amount:4750,desc:'Servicios de Transporte Extra'}],
+      '22900254974': [{type:'vacaciones',       amount:831.20,  desc:'Vacaciones'},{type:'otros_ingresos',amount:4750,desc:'Otras Remuneraciones'}],
     };
-    // Q2 (16-28 Feb): solo transporte
+    // Q2 (16-28 Feb)
     const extrasQ2 = {
       '22900069414': [{type:'transporte_extra', amount:4100,    desc:'Servicios de Transporte Extra'}],
       '07600128248': [{type:'transporte_extra', amount:5900,    desc:'Servicios de Transporte Extra'}],
