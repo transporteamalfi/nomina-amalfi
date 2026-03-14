@@ -1,4 +1,3 @@
-<!-- v2026-03-14-FIXED-UNICODE -->
 <!DOCTYPE html>
 <html lang="es">
 <head>
@@ -454,8 +453,7 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
   }, [employees]);
   // ── Restaurar nóminas enero 2026 ─────────────────────────────────────────
   const restoreNominasEnero = async () => {
-    if (!window.confirm('¿Restaurar las nóminas de enero 2026 (1ra y 2da quincena)?\
-Esto sobrescribirá datos existentes de esos períodos.')) return;
+    if (!window.confirm('¿Restaurar las nóminas de enero 2026 (1ra y 2da quincena)?Esto sobrescribirá datos existentes de esos períodos.')) return;
     const p1 = ALL_PERIODS.find(p => p.id === '2026-1-1');
     const p2 = ALL_PERIODS.find(p => p.id === '2026-1-2');
     const extrasQ1 = {
@@ -496,8 +494,7 @@ Esto sobrescribirá datos existentes de esos períodos.')) return;
   };
   // ── Restaurar nóminas febrero 2026 ────────────────────────────────────────
   const restoreNominasFebrero = async () => {
-    if (!window.confirm('¿Restaurar las nóminas de febrero 2026 (1ra y 2da quincena)?\
-Esto sobrescribirá datos existentes de esos períodos.')) return;
+    if (!window.confirm('¿Restaurar las nóminas de febrero 2026 (1ra y 2da quincena)?Esto sobrescribirá datos existentes de esos períodos.')) return;
     const p1 = ALL_PERIODS.find(p => p.id === '2026-2-1') || { id:'2026-2-1', label:'1 Feb - 15 Feb', year:2026, month:2, half:1, startDate:'2026-02-01', endDate:'2026-02-15' };
     const p2 = ALL_PERIODS.find(p => p.id === '2026-2-2') || { id:'2026-2-2', label:'16 Feb - 28 Feb', year:2026, month:2, half:2, startDate:'2026-02-16', endDate:'2026-02-28' };
     // Q1 (1-15 Feb): vacaciones + transporte
@@ -1038,7 +1035,6 @@ function Nomina({ employees, periods, setPeriods, savePeriod, deletePeriod, show
   const [periodId, setPeriodId] = useState("");
   const [empExtras, setEmpExtras] = useState({});
   const [step, setStep] = useState(1);
-  const [empSel, setEmpSel] = useState(null);
   const [noveltyEmp, setNoveltyEmp] = useState(null);
   const [confirmDelete, setConfirmDelete] = useState(null);
   const [excluded, setExcluded] = useState(new Set()); // IDs excluidos del período actual
@@ -1972,12 +1968,8 @@ function Reportes({ employees, periods, deletePeriod }) {
       `# Empleados: ${data.length}`,
       `# TSS Resolución 01-2025 | AFP 2.87%/7.10% | SFS 3.04%/7.09% | SMN: RD$23,223.00`,
       "",
-    ].join("\
-");
-    const csv = meta + headers.join(",") + "\
-" + csvRows.join("\
-") + "\
-" + totRow;
+    ].join("\n");
+    const csv = meta + headers.join(",") + "\n" + csvRows.join("\n") + "\n" + totRow;
     const blob = new Blob(["﻿"+csv], {type:"text/csv;charset=utf-8"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -2262,8 +2254,7 @@ function Reportes({ employees, periods, deletePeriod }) {
     }
     // SUMARIO
     lines.push("S"+padZ(String(lines.length+1),6));
-    const blob = new Blob([lines.join("\
-")],{type:"text/plain;charset=utf-8"});
+    const blob = new Blob([lines.join("\n")],{type:"text/plain;charset=utf-8"});
     const url2 = URL.createObjectURL(blob);
     const a2 = document.createElement("a");
     a2.href=url2; a2.download=`AM_${RNC}_${per}.txt`;
@@ -3141,7 +3132,8 @@ function Formularios({ employees, periods }) {
 // CALCULADORA DE PRESTACIONES LABORALES (Ley 16-92 / Código de Trabajo RD)
 // ═══════════════════════════════════════════════════════════════════════════
 function Prestaciones({ employees, saveEmployee, setEmployees }) {
-  const [step, setStep] = useState(1); // 1=datos, 2=resultado
+  const [step, setStep] = useState(1);
+  const [empSel, setEmpSel] = useState(null);
   const [empId, setEmpId] = useState('');
   const [nombre, setNombre] = useState('');
   const [cedula, setCedula] = useState('');
@@ -3161,8 +3153,7 @@ function Prestaciones({ employees, saveEmployee, setEmployees }) {
     setCedula(emp.cedula || '');
     setSalario(String(emp.salary || ''));
     if (emp.hireDate) setFechaIni(emp.hireDate);
-    const vacDias = vacationDays(emp.hireDate);
-    setVacPend(String(vacDias));
+    setVacPend(String(vacationDays(emp.hireDate)));
   }
   function rd(n) { return 'RD$' + Number(n).toLocaleString('es-DO', {minimumFractionDigits:2,maximumFractionDigits:2}); }
   function calcular() {
@@ -3235,12 +3226,6 @@ function Prestaciones({ employees, saveEmployee, setEmployees }) {
     });
     setStep(2);
   }
-  function generateFichaSalidaPDF(r,emp){if(!window.jspdf){alert('jsPDF no disponible');return;}const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});const W=210,ML=18,CW=174;let y=14;const fM=v=>'RD$'+(Math.round((parseFloat(v)||0)*100)/100).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});try{doc.addImage(LOGO_TEA,'PNG',ML,y,20,11,undefined,'FAST');}catch(e){}doc.setFillColor(0,51,102);doc.rect(ML+23,y,CW-23,16,'F');doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(255,255,255);doc.text('TRANSPORTE EMPRESARIAL AMALFI, S.R.L.',ML+26,y+6);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(180,200,230);doc.text('RNC: 1-31-07998-9  Departamento de Recursos Humanos',ML+26,y+12);doc.setFillColor(232,160,32);doc.rect(ML,y+16,CW,8,'F');doc.setFont('helvetica','bold');doc.setFontSize(10);doc.setTextColor(0,51,102);doc.text('FORMULARIO DE SALIDA EN LA TSS',W/2,y+21.5,{align:'center'});y+=28;doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(90,90,90);doc.text('Fecha del formulario: '+new Date().toLocaleDateString('es-DO'),W-ML,y,{align:'right'});y+=7;doc.setFillColor(230,236,248);doc.rect(ML,y,CW,7,'F');doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(0,51,102);doc.text('DATOS DEL EX EMPLEADO',ML+3,y+4.8);y+=9;const F=(l,v,x,yy,w)=>{doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(90,90,90);doc.text(l,x,yy);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(10,10,40);doc.text(String(v||'—'),x,yy+5);doc.setDrawColor(180,190,210);doc.setLineWidth(0.2);doc.line(x,yy+6,x+w,yy+6);};F('Nombre y Apellido',r.nombre,ML,y,160);y+=14;F('Cedula',r.cedula,ML,y,52);F('NSS',emp&&emp.nss||'—',ML+58,y,52);F('Cargo',emp&&emp.position||'—',ML+118,y,52);y+=14;F('Fecha Ingreso',r.fechaIni,ML,y,52);F('Fecha Salida',r.fechaFin,ML+58,y,52);F('Motivo',r.tipo==='despido'?'Desahucio':r.tipo==='renuncia'?'Renuncia':r.tipo==='despido_just'?'Despido Just.':'Mutuo Acuerdo',ML+118,y,52);y+=14;F('Salario Mensual',fM(r.salMensual),ML,y,52);F('Tiempo Laborado',r.tiempoStr,ML+58,y,108);y+=16;doc.setFillColor(230,236,248);doc.rect(ML,y,CW,7,'F');doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(0,51,102);doc.text('PRESTACIONES LABORALES - LEY 16-92',ML+3,y+4.8);y+=9;[['Preaviso (Art.76)',r.pravisoDias,r.preaviso],['Cesantia (Art.80)',r.cesantiaDias,r.cesantia],['Vacaciones (Art.177)',r.vacDias,r.vacaciones],['Salario de Navidad (Art.219)','—',r.navidad]].forEach(([c,d,m],i)=>{if(i%2===0){doc.setFillColor(248,250,255);doc.rect(ML,y,CW,7,'F');}doc.setDrawColor(210,218,235);doc.setLineWidth(0.15);doc.rect(ML,y,CW,7);doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(20,30,60);doc.text(c,ML+2,y+4.5);doc.text(String(d||'—'),ML+90,y+4.5);doc.setFont('helvetica','bold');doc.text(fM(m),W-ML-2,y+4.5,{align:'right'});y+=7;});doc.setFillColor(22,163,74);doc.rect(ML,y,CW,12,'F');doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(255,255,255);doc.text('TOTAL A PAGAR:',ML+4,y+8);doc.text(fM(r.total),W-ML-2,y+8,{align:'right'});y+=18;const sY=y+16;[['Firma Ex Empleado','Descargo: SI / NO'],[' Autoriza RR.HH.','Transporte Amalfi'],['Contabilidad','Verificado']].forEach(([l,s],i)=>{const sx=ML+i*(CW/3);doc.setDrawColor(100,110,130);doc.setLineWidth(0.3);doc.line(sx,sY,sx+CW/3-6,sY);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(0,0,0);doc.text(l,sx,sY+4);doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(85,85,85);doc.text(s,sx,sY+8);});const pH=doc.internal.pageSize.getHeight();doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(160,160,160);doc.text('Transporte Empresarial Amalfi S.R.L. - RNC: 131-07998-9',W/2,pH-8,{align:'center'});doc.save('FichaSalidaTSS_'+(r.nombre||'').replace(/\s+/g,'_').toUpperCase()+'.pdf');}
-  function generarReciboPago(r,emp){if(!window.jspdf){alert('jsPDF no disponible');return;}const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});const W=210,ML=20,CW=170;let y=18;const fM=v=>'RD$'+(Math.round((parseFloat(v)||0)*100)/100).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});try{doc.addImage(LOGO_TEA,'PNG',W/2-12,y,24,14,undefined,'FAST');y+=17;}catch(e){y+=4;}doc.setFont('times','bold');doc.setFontSize(14);doc.setTextColor(0,0,0);doc.text('TRANSPORTE EMPRESARIAL AMALFI, S.R.L.',W/2,y,{align:'center'});y+=6;doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(80,80,80);doc.text('RNC: 131-07998-9',W/2,y,{align:'center'});y+=7;doc.setDrawColor(0,0,0);doc.setLineWidth(0.5);doc.line(ML,y,W-ML,y);y+=4;doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(0,0,0);doc.text('RECIBO DE PAGO DE PRESTACIONES LABORALES',W/2,y,{align:'center'});y+=4;doc.line(ML,y,W-ML,y);y+=9;const cd='REC-'+new Date().getFullYear()+'-'+String(Date.now()).slice(-5);doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(90,90,90);doc.text('No. Recibo: '+cd,ML,y);doc.text('Fecha: '+r.fecha,W-ML,y,{align:'right'});y+=10;doc.setFillColor(240,244,252);doc.rect(ML,y,CW,30,'F');doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(0,51,102);doc.text('BENEFICIARIO',ML+3,y+6);let fy=y+12;[['Nombre:',r.nombre,'Cedula:',r.cedula],['Cargo:',emp&&emp.position||'—','NSS:',emp&&emp.nss||'—'],['Fecha ingreso:',r.fechaIni,'Fecha salida:',r.fechaFin]].forEach(([l1,v1,l2,v2])=>{doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(90,90,90);doc.text(l1,ML+3,fy);doc.text(l2,ML+88,fy);doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(10,10,10);doc.text(String(v1||'—'),ML+25,fy);doc.text(String(v2||'—'),ML+104,fy);fy+=7;});y+=34;doc.setFillColor(0,51,102);doc.rect(ML,y,CW,7,'F');doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(255,255,255);doc.text('Concepto',ML+2,y+4.8);doc.text('Monto (RD$)',W-ML-2,y+4.8,{align:'right'});y+=7;[['Preaviso ('+r.pravisoDias+' dias)',r.preaviso],['Cesantia ('+r.cesantiaDias+' dias)',r.cesantia],['Vacaciones ('+r.vacDias+' dias)',r.vacaciones],['Salario de Navidad',r.navidad]].forEach((it,i)=>{if(i%2===0){doc.setFillColor(248,250,255);doc.rect(ML,y,CW,7,'F');}doc.setDrawColor(220,225,235);doc.setLineWidth(0.15);doc.rect(ML,y,CW,7);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(20,20,20);doc.text(it[0],ML+2,y+4.8);doc.setFont('helvetica','bold');doc.text(fM(it[1]),W-ML-2,y+4.8,{align:'right'});y+=7;});doc.setFillColor(22,163,74);doc.rect(ML,y,CW,10,'F');doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(255,255,255);doc.text('TOTAL RECIBIDO:',ML+3,y+7);doc.text(fM(r.total),W-ML-2,y+7,{align:'right'});y+=16;doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(50,50,50);const dl=doc.splitTextToSize('Yo, '+r.nombre+', declaro haber recibido la suma de '+fM(r.total)+' por prestaciones laborales y doy mi total conformidad y descargo.',CW);doc.text(dl,ML,y);y+=dl.length*4+14;[[ML,'Firma del Ex Trabajador'],[ML+CW/2+6,'Autorizado por RR.HH.']].forEach(([sx,lb])=>{doc.setDrawColor(80,80,80);doc.setLineWidth(0.4);doc.line(sx,y+12,sx+CW/2-10,y+12);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(0,0,0);doc.text(lb,sx,y+17);});doc.save('ReciboPago_'+(r.nombre||'').replace(/\s+/g,'_').toUpperCase()+'.pdf');}
-  function generarDescargoLaboral(r,emp){if(!window.jspdf){alert('jsPDF no disponible');return;}const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});const W=210,ML=22,CW=166;let y=18;const fM=v=>'RD$'+(Math.round((parseFloat(v)||0)*100)/100).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});try{doc.addImage(LOGO_TEA,'PNG',W/2-12,y,24,14,undefined,'FAST');y+=17;}catch(e){y+=4;}doc.setFont('times','bold');doc.setFontSize(14);doc.setTextColor(0,0,0);doc.text('TRANSPORTE EMPRESARIAL AMALFI, S.R.L.',W/2,y,{align:'center'});y+=6;doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(80,80,80);doc.text('RNC: 131-07998-9',W/2,y,{align:'center'});y+=8;doc.setDrawColor(0,0,0);doc.setLineWidth(0.5);doc.line(ML,y,W-ML,y);y+=5;doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(0,0,0);doc.text('CARTA DE DESCARGO LABORAL',W/2,y,{align:'center'});y+=4;doc.line(ML,y,W-ML,y);y+=10;doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(40,40,40);doc.text('Santo Domingo, D.N., '+r.fecha,W-ML,y,{align:'right'});y+=10;const tt=r.tipo==='despido'?'desahucio (Art.75)':r.tipo==='renuncia'?'renuncia voluntaria':r.tipo==='despido_just'?'despido justificado (Art.88)':'mutuo acuerdo';const ps=['Yo, '+r.nombre+', cedula No. '+r.cedula+', NSS: '+(emp&&emp.nss||'—')+', por medio del presente instrumento:','DECLARO Y HAGO CONSTAR que he recibido a mi completa satisfaccion de TRANSPORTE EMPRESARIAL AMALFI, S.R.L. la totalidad de mis prestaciones laborales con motivo de la terminacion de mi contrato mediante '+tt+', efectivo el '+r.fechaFin+'.','El periodo laborado fue desde '+r.fechaIni+' hasta '+r.fechaFin+' ('+r.tiempoStr+'), cargo: '+(emp&&emp.position||'—')+', salario mensual: '+fM(r.salMensual)+'. TOTAL RECIBIDO: '+fM(r.total)+'.','Con la firma del presente otorgo MI TOTAL DESCARGO a TRANSPORTE EMPRESARIAL AMALFI, S.R.L. de cualquier reclamacion de caracter laboral correspondiente a la relacion de trabajo antes mencionada.'];ps.forEach(p=>{const ls=doc.splitTextToSize(p,CW);doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(30,30,30);doc.text(ls,ML,y,{lineHeightFactor:1.6});y+=ls.length*6+7;});doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(0,0,0);doc.text('EN CONSTANCIA de lo anterior firmo en Santo Domingo el '+r.fecha+'.',ML,y);y+=22;[[ML,'Firma del Ex Trabajador',r.nombre,'Cedula: '+r.cedula],[ML+CW/2+8,'Testigo / RR.HH.','Transporte Empresarial Amalfi','RNC: 131-07998-9']].forEach(([sx,lb,nm,sb])=>{doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(40,40,40);doc.text('_________________________',sx,y);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(0,0,0);doc.text(lb,sx,y+5);doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(70,70,70);doc.text(nm,sx,y+10);doc.text(sb,sx,y+14);});doc.save('DescargoLaboral_'+(r.nombre||'').replace(/\s+/g,'_').toUpperCase()+'.pdf');}
-  function generarCartaTerminacion(r,emp){if(!window.jspdf){alert('jsPDF no disponible');return;}const{jsPDF}=window.jspdf;const doc=new jsPDF({unit:'mm',format:'a4'});const W=210,ML=25,CW=160;let y=22;const N=['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve','diez','once','doce','trece','catorce','quince','dieciseis','diecisiete','dieciocho','diecinueve','veinte','veintiuno','veintidos','veintitres','veinticuatro','veinticinco','veintiseis','veintisiete','veintiocho','veintinueve','treinta','treinta y uno'];const M=['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];const C=['','cien','doscientos','trescientos','cuatrocientos','quinientos','seiscientos','setecientos','ochocientos','novecientos'];const aW=y=>{const mi=Math.floor(y/1000),re=y%1000,ce=Math.floor(re/100),du=re%100;let r='';if(mi===1)r='mil';else if(mi>1)r=N[mi]+' mil';if(ce>0)r+=(r?' ':'')+C[ce];if(du>0&&du<=31)r+=(r?' ':'')+N[du];return r;};const fL=s=>{const p=(s||'').split('T')[0].split('-');if(p.length<3)return{d:'—',dn:'—',m:'—',a:'—',an:'—'};const dd=parseInt(p[2]),mm=parseInt(p[1])-1,yy=parseInt(p[0]);return{d:N[dd]||String(dd),dn:String(dd),m:M[mm]||'—',a:aW(yy),an:String(yy)};};const pI=s=>{if(!s)return'';if(s.includes('/')){const p=s.split('/');return p[2]+'-'+p[1].padStart(2,'0')+'-'+p[0].padStart(2,'0');}return s;};const fd=fL(new Date().toISOString().substring(0,10));const ff=fL(pI(r.fechaFinISO||r.fechaFin));const fi=fL(pI(r.fechaIniISO||r.fechaIni));const sH=(sz,b)=>{doc.setFont('times',b?'bold':'normal');doc.setFontSize(sz);doc.setTextColor(0,0,0);};try{doc.addImage(LOGO_TEA,'PNG',ML,y,20,12,undefined,'FAST');}catch(e){}sH(13,true);doc.text('TRANSPORTE EMPRESARIAL AMALFI SRL.',ML+24,y+4);sH(9,false);doc.setTextColor(60,60,60);doc.text('Av. Monumental #6, Ens. Los Grises, S.D.',ML+24,y+9);doc.text('Telefonos (809) 560-3012  |  RNC 1-31-07998-9',ML+24,y+14);y+=20;doc.setDrawColor(0,0,0);doc.setLineWidth(0.35);doc.line(ML,y,W-ML,y);y+=8;sH(11,false);doc.text(fd.d+' ('+fd.dn+') de '+fd.m+' del '+fd.a+' ('+fd.an+')',W-ML,y,{align:'right'});y+=6;doc.text('Santo Domingo',W-ML,y,{align:'right'});y+=10;sH(11,false);doc.text('Senor',ML,y);y+=6;sH(11,true);doc.text((r.nombre||'').toUpperCase(),ML,y);y+=5;sH(11,false);doc.text(r.cedula||'—',ML,y);y+=5;doc.text('Ciudad.',ML,y);y+=10;sH(11,false);doc.text('Distinguido senor:',ML,y);y+=10;const pa='Por medio de la presente le informamos que efectivo a partir del dia '+ff.d+' ('+ff.dn+') de '+ff.m+' del '+ff.a+' ('+ff.an+') se le terminara su contrato de trabajo que inicio el dia '+fi.d+' ('+fi.dn+') de '+fi.m+' del '+fi.a+' ('+fi.an+'), consecuentemente, le pagamos sus prestaciones laborales correspondientes a pre-aviso, cesantia y demas derechos laborales adquiridos y no disfrutados establecidos en el Codigo de Trabajo de la Republica Dominicana.';sH(11,false);const pL=doc.splitTextToSize(pa,CW);doc.text(pL,ML,y,{lineHeightFactor:1.4});y+=pL.length*5.5+8;const p2L=doc.splitTextToSize('Favor de firmar una copia de esta comunicacion en senal del acuse de recibo.',CW);doc.text(p2L,ML,y,{lineHeightFactor:1.4});y+=p2L.length*5.5+14;sH(11,false);doc.text('Muy atentamente,',ML,y);y+=18;sH(11,true);doc.text('Lic. Yanelci Alberti Pina',ML,y);y+=5;sH(11,false);doc.text('Gerente Recursos Humanos',ML,y);y+=5;doc.text('Transporte Empresarial Amalfi, SRL.',ML,y);y+=20;doc.setDrawColor(0,0,0);doc.setLineWidth(0.3);doc.line(ML,y,W-ML,y);y+=6;sH(11,false);doc.text('Recibido por:',ML,y);doc.setDrawColor(120,120,120);doc.setLineWidth(0.25);doc.line(ML+30,y+0.5,ML+110,y+0.5);y+=9;doc.text('Cedula:',ML,y);doc.line(ML+18,y+0.5,ML+98,y+0.5);y+=9;doc.text('Fecha:',ML,y);doc.line(ML+15,y+0.5,ML+95,y+0.5);const pH=doc.internal.pageSize.getHeight();doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(160,160,160);doc.text('Transporte Empresarial Amalfi, SRL.  RNC: 1-31-07998-9',W/2,pH-8,{align:'center'});doc.save('CartaTerminacion_'+(r.nombre||'').replace(/\s+/g,'_').toUpperCase()+'.pdf');}
-  async function generarExpedienteCompleto(r,emp){const dl=ms=>new Promise(res=>setTimeout(res,ms));descargarPDF();await dl(600);generateFichaSalidaPDF(r,emp);await dl(600);generarReciboPago(r,emp);await dl(600);generarDescargoLaboral(r,emp);await dl(600);generarCartaTerminacion(r,emp);}
-
   function descargarPDF() {
     const r = resultado;
     const { jsPDF } = window.jspdf;
@@ -3422,64 +3407,6 @@ function Prestaciones({ employees, saveEmployee, setEmployees }) {
           ⬇️ Descargar PDF
         </button>
       </div>
-      {/* Panel Expediente de Salida */}
-      {resultado && (
-        <div style={{background:'linear-gradient(135deg,#001a3e,#003366)',borderRadius:14,padding:'18px 22px',marginBottom:18,color:'white'}}>
-          <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
-            <span style={{fontSize:26}}>{'\u{1f4c1}'}</span>
-            <div>
-              <div style={{fontWeight:800,fontSize:15}}>Expediente de Salida — {resultado.nombre}</div>
-              <div style={{fontSize:11,opacity:.7}}>5 documentos oficiales · {resultado.fechaFin}</div>
-            </div>
-          </div>
-          <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:8,marginBottom:14}}>
-            {[
-              {icon:'📊',label:'Calculo Prestaciones',fn:()=>descargarPDF()},
-              {icon:'🏛️',label:'Ficha Salida TSS',fn:()=>{const e=employees.find(x=>String(x.id)===resultado.empId);generateFichaSalidaPDF({...resultado,fechaFinISO:resultado.fechaFinISO||resultado.fechaFin},e);}},
-              {icon:'🧾',label:'Recibo de Pago',fn:()=>{const e=employees.find(x=>String(x.id)===resultado.empId);generarReciboPago(resultado,e);}},
-              {icon:'✍️',label:'Descargo Laboral',fn:()=>{const e=employees.find(x=>String(x.id)===resultado.empId);generarDescargoLaboral(resultado,e);}},
-              {icon:'📜',label:'Carta Terminacion',fn:()=>{const e=employees.find(x=>String(x.id)===resultado.empId);generarCartaTerminacion(resultado,e);}},
-            ].map((doc,i)=>(
-              <button key={i} onClick={doc.fn}
-                style={{background:'rgba(255,255,255,.1)',border:'1px solid rgba(255,255,255,.2)',
-                  borderRadius:10,padding:'12px 6px',cursor:'pointer',textAlign:'center',color:'white',fontFamily:'inherit'}}>
-                <div style={{fontSize:22,marginBottom:5}}>{doc.icon}</div>
-                <div style={{fontSize:10,fontWeight:700}}>{doc.label}</div>
-              </button>
-            ))}
-          </div>
-          <button onClick={async()=>{const e=employees.find(x=>String(x.id)===resultado.empId);await generarExpedienteCompleto(resultado,e);}}
-            style={{width:'100%',padding:13,background:'linear-gradient(135deg,#E8A020,#D4911A)',border:'none',
-              borderRadius:10,color:'white',fontWeight:800,fontSize:15,cursor:'pointer',fontFamily:'Montserrat,sans-serif'}}>
-            📦 Generar Expediente Completo (5 documentos)
-          </button>
-          {resultado.empId && (() => {
-            const emp = employees.find(e => String(e.id) === resultado.empId);
-            if (!emp || emp.exitDate) return (
-              <div style={{marginTop:10,padding:'8px 14px',background:'rgba(22,163,74,.2)',borderRadius:8,fontSize:13,color:'#86EFAC',fontWeight:700}}>
-                ✅ Empleado registrado como retirado el {fmt(emp && emp.exitDate)}
-              </div>
-            );
-            return (
-              <button onClick={async()=>{
-                if(!window.confirm('¿Registrar la salida definitiva de '+resultado.nombre+'?
-Fecha: '+resultado.fechaFin+'
-
-⚠️ Ya no aparecera en nomina.')) return;
-                const updated={...emp,exitDate:resultado.fechaFinISO||new Date().toISOString().substring(0,10),exitReason:resultado.tipo,exitTotal:resultado.total};
-                if(saveEmployee) await saveEmployee(updated);
-                if(setEmployees) setEmployees(prev=>prev.map(e=>String(e.id)===resultado.empId?updated:e));
-                generateFichaSalidaPDF({...resultado,fechaFinISO:resultado.fechaFinISO||new Date().toISOString().substring(0,10)},emp);
-                alert('✅ '+resultado.nombre+' registrado como retirado.\n📄 Ficha TSS descargada.');
-              }}
-              style={{marginTop:10,width:'100%',padding:11,background:'#DC2626',border:'none',
-                borderRadius:10,color:'white',fontWeight:800,fontSize:14,cursor:'pointer',fontFamily:'inherit'}}>
-                🚪 Registrar Salida Definitiva
-              </button>
-            );
-          })()}
-        </div>
-      )}
       {/* Documento estilo Ministerio de Trabajo */}
       <div style={{background:'white',borderRadius:16,boxShadow:'0 4px 24px rgba(0,51,102,.12)',overflow:'hidden'}}>
         {/* Encabezado */}
