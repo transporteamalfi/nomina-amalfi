@@ -453,8 +453,7 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
   }, [employees]);
   // \u2500\u2500 Restaurar n\u00f3minas enero 2026 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   const restoreNominasEnero = async () => {
-    if (!window.confirm('\u00bfRestaurar las n\u00f3minas de enero 2026 (1ra y 2da quincena)?\
-Esto sobrescribir\u00e1 datos existentes de esos per\u00edodos.')) return;
+    if (!window.confirm('\u00bfRestaurar las n\u00f3minas de enero 2026 (1ra y 2da quincena)?Esto sobrescribir\u00e1 datos existentes de esos per\u00edodos.')) return;
     const p1 = ALL_PERIODS.find(p => p.id === '2026-1-1');
     const p2 = ALL_PERIODS.find(p => p.id === '2026-1-2');
     const extrasQ1 = {
@@ -495,8 +494,7 @@ Esto sobrescribir\u00e1 datos existentes de esos per\u00edodos.')) return;
   };
   // \u2500\u2500 Restaurar n\u00f3minas febrero 2026 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500
   const restoreNominasFebrero = async () => {
-    if (!window.confirm('\u00bfRestaurar las n\u00f3minas de febrero 2026 (1ra y 2da quincena)?\
-Esto sobrescribir\u00e1 datos existentes de esos per\u00edodos.')) return;
+    if (!window.confirm('\u00bfRestaurar las n\u00f3minas de febrero 2026 (1ra y 2da quincena)?Esto sobrescribir\u00e1 datos existentes de esos per\u00edodos.')) return;
     const p1 = ALL_PERIODS.find(p => p.id === '2026-2-1') || { id:'2026-2-1', label:'1 Feb - 15 Feb', year:2026, month:2, half:1, startDate:'2026-02-01', endDate:'2026-02-15' };
     const p2 = ALL_PERIODS.find(p => p.id === '2026-2-2') || { id:'2026-2-2', label:'16 Feb - 28 Feb', year:2026, month:2, half:2, startDate:'2026-02-16', endDate:'2026-02-28' };
     // Q1 (1-15 Feb): vacaciones + transporte
@@ -1971,12 +1969,8 @@ function Reportes({ employees, periods, deletePeriod }) {
       `# Empleados: ${data.length}`,
       `# TSS Resoluci\u00f3n 01-2025 | AFP 2.87%/7.10% | SFS 3.04%/7.09% | SMN: RD$23,223.00`,
       "",
-    ].join("\
-");
-    const csv = meta + headers.join(",") + "\
-" + csvRows.join("\
-") + "\
-" + totRow;
+    ].join("");
+    const csv = meta + headers.join(",") + "" + csvRows.join("") + "" + totRow;
     const blob = new Blob(["\uFEFF"+csv], {type:"text/csv;charset=utf-8"});
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
@@ -2261,8 +2255,7 @@ function Reportes({ employees, periods, deletePeriod }) {
     }
     // SUMARIO
     lines.push("S"+padZ(String(lines.length+1),6));
-    const blob = new Blob([lines.join("\
-")],{type:"text/plain;charset=utf-8"});
+    const blob = new Blob([lines.join("")],{type:"text/plain;charset=utf-8"});
     const url2 = URL.createObjectURL(blob);
     const a2 = document.createElement("a");
     a2.href=url2; a2.download=`AM_${RNC}_${per}.txt`;
@@ -3425,7 +3418,7 @@ function Prestaciones({ employees, saveEmployee, setEmployees }) {
       {resultado && (
         <div style={{background:'linear-gradient(135deg,#001a3e,#003366)',borderRadius:14,padding:'18px 22px',marginBottom:18,color:'white'}}>
           <div style={{display:'flex',alignItems:'center',gap:10,marginBottom:14}}>
-            <span style={{fontSize:26}}>{'\u{1f4c1}'}</span>
+            <span style={{fontSize:26}}>📁</span>
             <div>
               <div style={{fontWeight:800,fontSize:15}}>Expediente de Salida — {resultado.nombre}</div>
               <div style={{fontSize:11,opacity:.7}}>5 documentos oficiales · {resultado.fechaFin}</div>
@@ -3461,10 +3454,7 @@ function Prestaciones({ employees, saveEmployee, setEmployees }) {
             );
             return (
               <button onClick={async()=>{
-                if(!window.confirm('¿Registrar la salida definitiva de '+resultado.nombre+'?
-Fecha: '+resultado.fechaFin+'
-
-⚠️ Ya no aparecera en nomina.')) return;
+                if(!window.confirm('¿Registrar salida de '+resultado.nombre+'? Esto lo retirara de la nomina.')) return;
                 const updated={...emp,exitDate:resultado.fechaFinISO||new Date().toISOString().substring(0,10),exitReason:resultado.tipo,exitTotal:resultado.total};
                 if(saveEmployee) await saveEmployee(updated);
                 if(setEmployees) setEmployees(prev=>prev.map(e=>String(e.id)===resultado.empId?updated:e));
