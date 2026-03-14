@@ -500,12 +500,12 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
     const makeRows = (extraMap, deducMap={}, excluded=[]) =>
       employees.filter(e => !excluded.includes(e.cedula))
         .map(e => ({ emp:e, calc:calcPayroll(e, extraMap[e.cedula]||[], deducMap[e.cedula]||[]) }));
-    const period1 = { periodId:'2026-1-1', period:p1, createdAt:'2026-02-04T10:00:00.000Z', rows:makeRows(extrasQ1,deducQ1,[]) };
-    const period2 = { periodId:'2026-1-2', period:p2, createdAt:'2026-02-04T10:30:00.000Z', rows:makeRows(extrasQ2,{},[]) };
+    const period1 = { periodId:'periodo-2026-1-1', period:p1, createdAt:'2026-02-04T10:00:00.000Z', rows:makeRows(extrasQ1,deducQ1,[]) };
+    const period2 = { periodId:'periodo-2026-1-2', period:p2, createdAt:'2026-02-04T10:30:00.000Z', rows:makeRows(extrasQ2,{},[]) };
     await savePeriod(period1);
     await savePeriod(period2);
     setPeriods(prev => {
-      const f = prev.filter(x => x.periodId!=='2026-1-1' && x.periodId!=='2026-1-2');
+      const f = prev.filter(x => x.periodId!=='periodo-2026-1-1' && x.periodId!=='periodo-2026-1-2');
       return [...f, period1, period2];
     });
     if(showToast) showToast('✅ Nóminas enero 2026 restauradas');
@@ -514,9 +514,13 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
   // ── Restaurar nóminas febrero 2026 ────────────────────────────────────────
   const restoreNominasFebrero = async () => {
     if (!window.confirm('¿Restaurar las nóminas de febrero 2026 (1ra y 2da quincena)?\nEsto sobrescribirá datos existentes de esos períodos.')) return;
-    const p1 = ALL_PERIODS.find(p => p.id === '2026-2-1') || { id:'2026-2-1', label:'1 Feb - 15 Feb',  year:2026, month:2, half:1, startDate:'2026-02-01', endDate:'2026-02-15' };
-    const p2 = ALL_PERIODS.find(p => p.id === '2026-2-2') || { id:'2026-2-2', label:'16 Feb - 28 Feb', year:2026, month:2, half:2, startDate:'2026-02-16', endDate:'2026-02-28' };
-    // Q1 (1-15 Feb): vacaciones + transporte
+    // Hardcoded para evitar que ALL_PERIODS.find() devuelva undefined
+    const p1 = { id:'2026-2-1', label:'1 Feb - 15 Feb',  year:2026, month:2, half:1, startDate:'2026-02-01', endDate:'2026-02-15' };
+    const p2 = { id:'2026-2-2', label:'16 Feb - 28 Feb', year:2026, month:2, half:2, startDate:'2026-02-16', endDate:'2026-02-28' };
+    // Santo y Obispo tenían salario 18,067.80 en febrero (el aumento a 18,421.20 es desde marzo)
+    const FEB_SALARIES = { '00108444787': 18067.80, '00108633728': 18067.80 };
+    const empFeb = (e) => FEB_SALARIES[e.cedula] ? {...e, salary: FEB_SALARIES[e.cedula]} : e;
+    // Q1 (1-15 Feb)
     const extrasQ1 = {
       '22900069414': [{type:'transporte_extra', amount:11500,   desc:'Servicios de Transporte Extra'}],
       '40225914395': [{type:'vacaciones',       amount:6894.46, desc:'Vacaciones'},{type:'transporte_extra',amount:13500,desc:'Servicios de Transporte Extra'}],
@@ -541,25 +545,23 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
       '40222131076': [{type:'transporte_extra', amount:500,     desc:'Servicios de Transporte Extra'}],
       '22500222868': [{type:'transporte_extra', amount:3900,    desc:'Servicios de Transporte Extra'}],
     };
-    const makeRows = (extraMap, deducMap={}) =>
-      employees.map(e => ({ emp:e, calc:calcPayroll(e, extraMap[e.cedula]||[], deducMap[e.cedula]||[]) }));
-    const period1 = { periodId:'2026-2-1', period:p1, createdAt:'2026-03-04T10:00:00.000Z', rows:makeRows(extrasQ1) };
-    const period2 = { periodId:'2026-2-2', period:p2, createdAt:'2026-03-04T10:30:00.000Z', rows:makeRows(extrasQ2) };
+    const makeRows = (extraMap) =>
+      employees.map(e => { const ef = empFeb(e); return { emp:ef, calc:calcPayroll(ef, extraMap[e.cedula]||[], []) }; });
+    const period1 = { periodId:'periodo-2026-2-1', period:p1, createdAt:'2026-03-04T10:00:00.000Z', rows:makeRows(extrasQ1) };
+    const period2 = { periodId:'periodo-2026-2-2', period:p2, createdAt:'2026-03-04T10:30:00.000Z', rows:makeRows(extrasQ2) };
     try {
       await savePeriod(period1);
       await savePeriod(period2);
       setPeriods(prev => {
-        const f = prev.filter(x => x.periodId!=='2026-2-1' && x.periodId!=='2026-2-2');
+        const f = prev.filter(x => x.periodId!=='periodo-2026-2-1' && x.periodId!=='periodo-2026-2-2');
         return [...f, period1, period2];
       });
-      setSelectedPeriod(period2);
-      setView('nomina');
       if(showToast) showToast('✅ Nóminas febrero 2026 restauradas');
     } catch(err) {
       alert('Error al restaurar febrero: ' + err.message);
       console.error(err);
     }
-  };;
+  };
 
     return (
     <div className="app">
@@ -592,8 +594,9 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
           ))}
           <div style={{marginLeft:"auto",display:"flex",gap:4,alignItems:"center"}}>
             <span style={{color:"#A0AEC0",fontSize:11,marginRight:4}}>{userEmail}</span>
-            <button onClick={async()=>{ if(window.confirm("¿Re-cargar datos de los 18 empleados? Esto actualizará campos faltantes sin borrar nóminas.")) { const batch=fbDB.batch(); SEED_EMPLOYEES.forEach(e => batch.set(fbDB.collection("employees").doc(String(e.id)), e)); await batch.commit(); showToast("✅ Empleados actualizados correctamente","success"); } }} style={{background:"#E8A020",color:"white",border:"none",padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",marginRight:6}} title="Recargar datos empleados">🔄 Sync Empleados</button>
-
+            <button onClick={async()=>{ if(window.confirm("¿Re-cargar datos de los 18 empleados? Esto actualizará campos faltantes sin borrar nóminas.")) { const batch=fbDB.batch(); SEED_EMPLOYEES.forEach(e => batch.set(fbDB.collection("employees").doc(String(e.id)), e, { merge: true })); await batch.commit(); showToast("✅ Empleados actualizados correctamente","success"); } }} style={{background:"#E8A020",color:"white",border:"none",padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",marginRight:6}} title="Recargar datos empleados">🔄 Sync Empleados</button>
+          <button onClick={restoreNominasEnero} style={{background:"#16A34A",color:"white",border:"none",padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",marginRight:6}} title="Restaurar nóminas enero 2026">🔁 Restaurar Ene-2026</button>
+          <button onClick={restoreNominasFebrero} style={{background:"#0891B2",color:"white",border:"none",padding:"6px 12px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",marginRight:6}} title="Restaurar nóminas febrero 2026">🔁 Restaurar Feb-2026</button>
           <button className="nb" onClick={onLogout} style={{color:"#FF8888"}} title="Cerrar sesión">⏏ Salir</button>
           </div>
         </nav>
@@ -601,7 +604,7 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
       <main className="main">
         {view === "dashboard" && <Dashboard employees={employees} reminders={reminders} periods={periods} setView={setView} />}
         {view === "empleados" && <Employees employees={employees} setEmployees={setEmployees} editEmp={editEmp} setEditEmp={setEditEmp} showNew={showNewEmp} setShowNew={setShowNewEmp} search={search} setSearch={setSearch} />}
-        {view === "nomina" && <Nomina employees={employees} periods={periods} setPeriods={setPeriods} savePeriod={savePeriod} deletePeriod={async(pid)=>{ await fbDB.collection("periods").doc(String(pid)).delete(); setPeriods(p=>p.filter(x=>x.periodId!==pid)); }} showToast={showToast} showNew={showNewPeriod} setShowNew={setShowNewPeriod} selectedPeriod={selectedPeriod} setSelectedPeriod={setSelectedPeriod} viewPayslip={viewPayslip} setViewPayslip={setViewPayslip} restoreNominasEnero={restoreNominasEnero} restoreNominasFebrero={restoreNominasFebrero} />}
+        {view === "nomina" && <Nomina employees={employees} periods={periods} setPeriods={setPeriods} savePeriod={savePeriod} deletePeriod={async(pid)=>{ await fbDB.collection("periods").doc(String(pid)).delete(); setPeriods(p=>p.filter(x=>x.periodId!==pid)); }} showToast={showToast} showNew={showNewPeriod} setShowNew={setShowNewPeriod} selectedPeriod={selectedPeriod} setSelectedPeriod={setSelectedPeriod} viewPayslip={viewPayslip} setViewPayslip={setViewPayslip} />}
         {view === "reportes" && <Reportes employees={employees} periods={periods} deletePeriod={async(pid)=>{ await fbDB.collection("periods").doc(String(pid)).delete(); setPeriods(p=>p.filter(x=>x.periodId!==pid)); }} />}
         {view === "formularios" && <Formularios employees={employees} periods={periods} />}
         {view === "prestaciones" && <Prestaciones employees={employees} />}
@@ -1078,7 +1081,7 @@ function SalaryRaiseModal({ emp, onClose, onSave }) {
   );
 }
 
-function Nomina({ employees, periods, setPeriods, savePeriod, deletePeriod, showToast, showNew, setShowNew, selectedPeriod, setSelectedPeriod, viewPayslip, setViewPayslip, restoreNominasEnero, restoreNominasFebrero }) {
+function Nomina({ employees, periods, setPeriods, savePeriod, deletePeriod, showToast, showNew, setShowNew, selectedPeriod, setSelectedPeriod, viewPayslip, setViewPayslip }) {
   const [periodId, setPeriodId] = useState("");
   const [empExtras, setEmpExtras] = useState({});
   const [step, setStep] = useState(1);
@@ -1245,13 +1248,7 @@ function Nomina({ employees, periods, setPeriods, savePeriod, deletePeriod, show
       )}
 
       <div className="card">
-        <div className="fjb" style={{marginBottom:14}}>
-          <div style={{fontFamily:"Montserrat",fontWeight:700,color:"#003366"}}>📋 Historial de Nóminas</div>
-          <div style={{display:"flex",gap:6}}>
-            <button onClick={restoreNominasEnero} style={{background:"#16A34A",color:"white",border:"none",padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>🔁 Restaurar Ene-2026</button>
-            <button onClick={restoreNominasFebrero} style={{background:"#0891B2",color:"white",border:"none",padding:"7px 14px",borderRadius:8,fontSize:12,fontWeight:700,cursor:"pointer",display:"flex",alignItems:"center",gap:4}}>🔁 Restaurar Feb-2026</button>
-          </div>
-        </div>
+        <div style={{fontFamily:"Montserrat",fontWeight:700,color:"#003366",marginBottom:14}}>📋 Historial de Nóminas</div>
         {periods.length === 0
           ? <div className="tc tm" style={{padding:"36px 0"}}><div style={{fontSize:38,marginBottom:11}}>📋</div><div>No hay nóminas procesadas aún</div></div>
           : <div className="tw"><table><thead><tr><th>Período</th><th>Empleados</th><th>Total Neto</th><th>Costo Empresa</th><th>Procesada</th><th>Acciones</th></tr></thead><tbody>{periods.slice().reverse().map(p => {
@@ -5250,7 +5247,7 @@ function Root() {
         // Merge seed fields into Firestore data so new fields always appear
         const merged = data.map(emp => {
           const seed = SEED_EMPLOYEES.find(s => String(s.id) === String(emp.id));
-          return seed ? { ...emp, ...seed } : emp;
+          return seed ? { ...seed, ...emp } : emp; // Firestore wins; seed solo agrega campos nuevos
         });
         setEmpState(merged.sort((a,b) => a.name.localeCompare(b.name)));
       }
