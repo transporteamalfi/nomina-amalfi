@@ -3974,160 +3974,124 @@ function Prestaciones({ employees, saveEmployee, setEmployees }) {
   }
 
   // ── 4. CARTA DE TERMINACIÓN ─────────────────────────────────────────────
+  // ── Helpers conversión fechas a letras (compartidos) ────────────────
+  const _UNIDADES_NUM = ['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve',
+    'diez','once','doce','trece','catorce','quince','dieciseis','diecisiete','dieciocho','diecinueve',
+    'veinte','veintiuno','veintidos','veintitres','veinticuatro','veinticinco','veintiseis','veintisiete',
+    'veintiocho','veintinueve','treinta','treinta y uno'];
+  const _MESES_LETRAS = ['enero','febrero','marzo','abril','mayo','junio',
+    'julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  function _anioLetras(y) {
+    const CIENTOS=['','cien','doscientos','trescientos','cuatrocientos','quinientos',
+      'seiscientos','setecientos','ochocientos','novecientos'];
+    const miles=Math.floor(y/1000), resto=y%1000;
+    const cents=Math.floor(resto/100), decU=resto%100;
+    let r='';
+    if(miles===1) r='mil'; else if(miles>1) r=_UNIDADES_NUM[miles]+' mil';
+    if(cents>0) r+=(r?' ':'')+CIENTOS[cents];
+    if(decU>0&&decU<=31) r+=(r?' ':'')+_UNIDADES_NUM[decU];
+    return r;
+  }
+  function _fechaLarga(isoStr) {
+    const parts=(isoStr||'').split('-');
+    if(parts.length<3) return {dia:'desconocido',diaNum:'—',mes:'desconocido',anio:'desconocido',anioNum:'—'};
+    const d=parseInt(parts[2]),m=parseInt(parts[1])-1,y=parseInt(parts[0]);
+    return {
+      dia: _UNIDADES_NUM[d]||String(d), diaNum:String(d),
+      mes: _MESES_LETRAS[m]||'—',
+      anio: _anioLetras(y), anioNum:String(y)
+    };
+  }
+  function _parseISO(raw) {
+    if(!raw) return '';
+    if(raw.includes('/')) { const pts=raw.split('/'); return pts[2]+'-'+pts[1].padStart(2,'0')+'-'+pts[0].padStart(2,'0'); }
+    return raw;
+  }
+
   function generarCartaTerminacion(r, emp) {
     const { jsPDF } = window.jspdf;
-
-    // ── Convertir número a palabras (español dominicano) ──────────────────
-    const UNIDADES = ['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve',
-      'diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve',
-      'veinte','veintiuno','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis','veintisiete','veintiocho','veintinueve','treinta','treinta y uno'];
-    const MESES_LETRAS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-    const MESES_NOMBRE = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
-
-    function anioLetras(y) {
-      const miles = Math.floor(y/1000);
-      const resto = y % 1000;
-      const cents = Math.floor(resto/100);
-      const decU  = resto % 100;
-      const CIENTOS = ['','cien','doscientos','trescientos','cuatrocientos','quinientos','seiscientos','setecientos','ochocientos','novecientos'];
-      let result = '';
-      if (miles === 1) result += 'mil';
-      else if (miles > 1) result += UNIDADES[miles]+' mil';
-      if (cents > 0) result += (result?' ':'') + CIENTOS[cents];
-      if (decU > 0 && decU <= 31) result += (result?' ':'') + UNIDADES[decU];
-      return result;
-    }
-
-    function fechaLarga(isoStr) {
-      // parse YYYY-MM-DD
-      const parts = (isoStr||'').split('-');
-      if (parts.length < 3) return {dia:'—',mes:'—',anio:'—',diaNum:'—',anioNum:'—'};
-      const d = parseInt(parts[2]), m = parseInt(parts[1])-1, y = parseInt(parts[0]);
-      return {
-        dia:   UNIDADES[d]  || String(d),
-        diaNum: String(d),
-        mes:   MESES_LETRAS[m] || '—',
-        anio:  anioLetras(y),
-        anioNum: String(y),
-      };
-    }
-
-    // Parsear fechas (soporte ISO YYYY-MM-DD o DD/MM/AAAA)
-    function parseISO(raw) {
-      if (!raw) return '';
-      if (raw.includes('/')) { const [d,m,y]=raw.split('/'); return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`; }
-      return raw;
-    }
-
-    const fechaDocISO = new Date().toISOString().substring(0,10);
-    const fechaDoc  = fechaLarga(fechaDocISO);
-    const fechaFin  = fechaLarga(parseISO(r.fechaFinISO || r.fechaFin));
-    const fechaIni  = fechaLarga(parseISO(r.fechaIniISO || r.fechaIni));
-
-    // ── jsPDF setup ──────────────────────────────────────────────────────
     const doc = new jsPDF({ unit:'mm', format:'a4' });
     const W=210, ML=25, MR=25, CW=160;
     let y = 22;
 
-    // ── Fuente y colores ─────────────────────────────────────────────────
-    const setH = (sz,bold) => { doc.setFont('times', bold?'bold':'normal'); doc.setFontSize(sz); doc.setTextColor(0,0,0); };
-    const setB = (sz)      => { doc.setFont('times','normal'); doc.setFontSize(sz); doc.setTextColor(0,0,0); };
+    const fmtM = v=>'RD$'+(Math.round((parseFloat(v)||0)*100)/100)
+      .toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const setH = (sz,bold)=>{doc.setFont('times',bold?'bold':'normal');doc.setFontSize(sz);doc.setTextColor(0,0,0);};
+    const setB = (sz)=>{doc.setFont('times','normal');doc.setFontSize(sz);doc.setTextColor(0,0,0);};
 
-    // ── ENCABEZADO EMPRESA ───────────────────────────────────────────────
-    setH(13, true);
-    doc.text('TRANSPORTE EMPRESARIAL AMALFI SRL.', ML, y); y += 6;
-    setH(10, false);
-    doc.text('Av. Monumental #6, Ens. Los Grises, S.D.', ML, y); y += 5;
-    doc.text('Teléfonos (809) 560-3012', ML, y); y += 5;
-    doc.text('RNC 1-31-07998-9', ML, y); y += 10;
+    const fechaDoc = _fechaLarga(new Date().toISOString().substring(0,10));
+    const fechaFin = _fechaLarga(_parseISO(r.fechaFinISO||r.fechaFin));
+    const fechaIni = _fechaLarga(_parseISO(r.fechaIniISO||r.fechaIni));
 
-    // Línea separadora fina
-    doc.setDrawColor(0,0,0); doc.setLineWidth(0.3);
-    doc.line(ML, y, W-MR, y); y += 8;
+    // Encabezado empresa
+    try{doc.addImage(LOGO_TEA,'PNG',ML,y,20,12,undefined,'FAST');}catch(e){}
+    setH(13,true);
+    doc.text('TRANSPORTE EMPRESARIAL AMALFI SRL.',ML+24,y+4);
+    setH(9,false);doc.setTextColor(60,60,60);
+    doc.text('Av. Monumental #6, Ens. Los Grises, S.D.',ML+24,y+9);
+    doc.text('Telefonos (809) 560-3012  |  RNC 1-31-07998-9',ML+24,y+14);
+    y+=20;
+    doc.setDrawColor(0,0,0);doc.setLineWidth(0.35);doc.line(ML,y,W-MR,y);y+=8;
 
-    // ── FECHA (alineada a la derecha, en letras) ─────────────────────────
+    // Fecha y ciudad (derecha)
     setB(11);
-    const fechaDocStr = `${fechaDoc.dia} (${fechaDoc.diaNum}) de ${fechaDoc.mes} del ${fechaDoc.anio} (${fechaDoc.anioNum})`;
-    doc.text(fechaDocStr, W-MR, y, {align:'right'}); y += 6;
-    doc.text('Santo Domingo', W-MR, y, {align:'right'}); y += 10;
+    doc.text(fechaDoc.dia+' ('+fechaDoc.diaNum+') de '+fechaDoc.mes+' del '+fechaDoc.anio+' ('+fechaDoc.anioNum+')',W-MR,y,{align:'right'});y+=6;
+    doc.text('Santo Domingo',W-MR,y,{align:'right'});y+=10;
 
-    // ── DESTINATARIO ─────────────────────────────────────────────────────
+    // Destinatario
+    setB(11);doc.text('Senor',ML,y);y+=6;
+    setH(11,true);doc.text((r.nombre||'').toUpperCase(),ML,y);y+=5;
+    setB(11);doc.text(r.cedula||'—',ML,y);y+=5;
+    doc.text('Ciudad.',ML,y);y+=10;
+
+    // Saludo
+    setB(11);doc.text('Distinguido senor:',ML,y);y+=10;
+
+    // Parrafo principal
+    const para='Por medio de la presente le informamos que efectivo a partir del dia '+
+      fechaFin.dia+' ('+fechaFin.diaNum+') de '+fechaFin.mes+' del '+fechaFin.anio+
+      ' ('+fechaFin.anioNum+') se le terminara su contrato de trabajo que inicio el dia '+
+      fechaIni.dia+' ('+fechaIni.diaNum+') de '+fechaIni.mes+' del '+fechaIni.anio+
+      ' ('+fechaIni.anioNum+'), consecuentemente, le pagamos sus prestaciones laborales '+
+      'correspondientes a pre-aviso, cesantia y demas derechos laborales adquiridos y no '+
+      'disfrutados establecidos en el Codigo de Trabajo de la Republica Dominicana.';
     setB(11);
-    doc.text('Señor', ML, y); y += 6;
-    setH(11, true);
-    doc.text((r.nombre||'').toUpperCase(), ML, y); y += 5;
+    const paraLines=doc.splitTextToSize(para,CW);
+    doc.text(paraLines,ML,y,{lineHeightFactor:1.4});y+=paraLines.length*5.5+8;
+
+    // Parrafo 2
+    const p2='Favor de firmar una copia de esta comunicacion en senal del acuse de recibo.';
+    const p2Lines=doc.splitTextToSize(p2,CW);
+    doc.text(p2Lines,ML,y,{lineHeightFactor:1.4});y+=p2Lines.length*5.5+14;
+
+    // Cierre
+    setB(11);doc.text('Muy atentamente,',ML,y);y+=18;
+    setH(11,true);doc.text('Lic. Yanelci Alberti Pina',ML,y);y+=5;
+    setB(11);doc.text('Gerente Recursos Humanos',ML,y);y+=5;
+    doc.text('Transporte Empresarial Amalfi, SRL.',ML,y);y+=20;
+
+    // Recibido por
+    doc.setDrawColor(0,0,0);doc.setLineWidth(0.3);doc.line(ML,y,W-MR,y);y+=6;
     setB(11);
-    doc.text(r.cedula||'—', ML, y); y += 5;
-    doc.text('Ciudad.', ML, y); y += 10;
+    const lineW=80;
+    doc.text('Recibido por:',ML,y);
+    doc.setDrawColor(120,120,120);doc.setLineWidth(0.25);
+    doc.line(ML+30,y+0.5,ML+30+lineW,y+0.5);y+=9;
+    doc.text('Cedula:',ML,y);
+    doc.line(ML+18,y+0.5,ML+18+lineW,y+0.5);y+=9;
+    doc.text('Fecha:',ML,y);
+    doc.line(ML+15,y+0.5,ML+15+lineW,y+0.5);y+=8;
 
-    // ── SALUDO ───────────────────────────────────────────────────────────
-    setB(11);
-    doc.text('Distinguido señor:', ML, y); y += 10;
+    doc.setFont('helvetica','italic');doc.setFontSize(7.5);doc.setTextColor(100,100,100);
+    doc.text('El trabajador completara a mano los campos de cedula y fecha.',ML,y);
 
-    // ── CUERPO PRINCIPAL ─────────────────────────────────────────────────
-    // Construcción del párrafo principal
-    const paraText =
-      'Por medio de la presente le informamos que efectivo a partir del día '+
-      fechaFin.dia+' ('+fechaFin.diaNum+') de '+fechaFin.mes+' del '+
-      fechaFin.anio+' ('+fechaFin.anioNum+') se le terminará su contrato de trabajo '+
-      'que inició el día '+fechaIni.dia+' ('+fechaIni.diaNum+') de '+fechaIni.mes+
-      ' del '+fechaIni.anio+' ('+fechaIni.anioNum+'), consecuentemente, le pagamos '+
-      'sus prestaciones laborales correspondientes a pre-aviso, cesantía y demás derechos '+
-      'laborales adquiridos y no disfrutados establecidos en el Código de Trabajo de la '+
-      'República Dominicana.';
+    // Pie
+    const pH=doc.internal.pageSize.getHeight();
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(160,160,160);
+    doc.text('Transporte Empresarial Amalfi, SRL.  RNC: 1-31-07998-9  Recursos Humanos',W/2,pH-8,{align:'center'});
 
-    setB(11);
-    const paraLines = doc.splitTextToSize(paraText, CW);
-
-    // Simular justificado: texto normal izquierda (jsPDF no hace justify nativo bien)
-    doc.text(paraLines, ML, y, {lineHeightFactor: 1.4}); y += paraLines.length * 5.5 + 8;
-
-    // Párrafo 2
-    setB(11);
-    const p2 = 'Favor de firmar una copia de esta comunicación en señal del acuse de recibo.';
-    const p2Lines = doc.splitTextToSize(p2, CW);
-    doc.text(p2Lines, ML, y, {lineHeightFactor:1.4}); y += p2Lines.length * 5.5 + 14;
-
-    // ── CIERRE ───────────────────────────────────────────────────────────
-    setB(11);
-    doc.text('Muy atentamente,', ML, y); y += 18;
-
-    // Firma
-    setH(11, true);
-    doc.text('Lic. Yanelci Alberti Piña', ML, y); y += 5;
-    setB(11);
-    doc.text('Gerente Recursos Humanos', ML, y); y += 5;
-    doc.text('Transporte Empresarial Amalfi, SRL.', ML, y); y += 20;
-
-    // ── SECCIÓN RECIBIDO POR ─────────────────────────────────────────────
-    doc.setDrawColor(0,0,0); doc.setLineWidth(0.3);
-    doc.line(ML, y, W-MR, y); y += 6;
-
-    setB(11);
-    const lineSpace = 80; // ancho de línea para escribir a mano
-
-    doc.text('Recibido por:', ML, y);
-    doc.setDrawColor(100,100,100); doc.setLineWidth(0.25);
-    doc.line(ML+28, y+0.5, ML+28+lineSpace, y+0.5); y += 9;
-
-    doc.setFont('times','normal'); doc.setFontSize(11);
-    doc.text('Cédula:', ML, y);
-    doc.line(ML+16, y+0.5, ML+16+lineSpace, y+0.5); y += 9;
-
-    doc.text('Fecha:', ML, y);
-    doc.line(ML+14, y+0.5, ML+14+lineSpace, y+0.5); y += 7;
-
-    // Nota pequeña
-    doc.setFont('helvetica','italic'); doc.setFontSize(7.5); doc.setTextColor(90,90,90);
-    doc.text('El trabajador completará a mano los campos de cédula y fecha.', ML, y);
-
-    // ── PIE DE PÁGINA ────────────────────────────────────────────────────
-    const pH = doc.internal.pageSize.getHeight();
-    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(160,160,160);
-    doc.text('Transporte Empresarial Amalfi, SRL.  ·  RNC: 131-07998-9  ·  Departamento de Recursos Humanos', W/2, pH-8, {align:'center'});
-
-    const slug = (r.nombre||'').replace(/\s+/g,'_').toUpperCase();
-    doc.save(`CartaTerminacion_${slug}.pdf`);
+    const slug=(r.nombre||'').replace(/\s+/g,'_').toUpperCase();
+    doc.save('CartaTerminacion_'+slug+'.pdf');
   }
 
   async function generarExpedienteCompleto(r, emp) {
