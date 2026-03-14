@@ -14,6 +14,7 @@
 <!-- Firebase SDK v10 -->
 <!-- SheetJS for Excel export -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-app-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-auth-compat.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/firebase@10.7.1/firebase-firestore-compat.js"></script>
@@ -3316,6 +3317,8 @@ function Formularios({ employees, periods }) {
 // ═══════════════════════════════════════════════════════════════════════════
 function Prestaciones({ employees, saveEmployee, setEmployees }) {
   const [step, setStep]         = useState(1); // 1=datos, 2=resultado
+  const [showDescargo, setShowDescargo] = useState(false);
+  const [descargoData, setDescargoData] = useState({ ciudad:'Santo Domingo', fechaFirma: new Date().toISOString().substring(0,10), notario:'', formaPago:'Transferencia bancaria' });
   const [empId, setEmpId]       = useState('');
   const [empSel, setEmpSel]     = useState(null); // empleado seleccionado completo
   const [nombre, setNombre]     = useState('');
@@ -3425,6 +3428,160 @@ function Prestaciones({ employees, saveEmployee, setEmployees }) {
   }
 
   
+  // ── Generar PDF Descargo y Finiquito Legal ─────────────────────────────────
+  function generateDescargoPDF(r, emp, dd) {
+    if (!r) return;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'mm', format:'letter' }); // Carta
+    const W = 215.9, PH = 279.4;
+    const ML = 28, MR = 28, MT = 28; // 3cm márgenes
+    const CW = W - ML - MR;
+    let y = MT;
+
+    const fmtM = v => 'RD$' + (Math.round((parseFloat(v)||0)*100)/100)
+      .toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+    // helpers
+    const textBlock = (txt, yy, opts={}) => {
+      const lines = doc.splitTextToSize(txt, CW);
+      doc.text(lines, opts.cx||ML, yy, {align: opts.align||'justify', maxWidth: CW});
+      return yy + lines.length * opts.lh;
+    };
+    const LH12 = 6.4; // line height for 12pt at 1.5 spacing
+
+    // Fecha de firma
+    const fd = new Date((dd.fechaFirma||new Date().toISOString().substring(0,10))+'T12:00:00');
+    const MESES_ES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    const diaNum = fd.getDate();
+    const mesStr = MESES_ES[fd.getMonth()];
+    const anioNum = fd.getFullYear();
+
+    // ── LOGO pequeño centrado ──────────────────────────────────────────────
+    try { doc.addImage(LOGO_TEA,'PNG', W/2-10, y, 20, 13, undefined,'FAST'); y += 16; }
+    catch(e) { y += 4; }
+
+    // ── TÍTULO ──────────────────────────────────────────────────────────────
+    doc.setFont('times','bold'); doc.setFontSize(13); doc.setTextColor(0,0,0);
+    const titulo = 'RECIBO DE DESCARGO Y FINIQUITO LEGAL POR ACUERDO TRANSACCIONAL Y AMIGABLE ARRIBADO ENTRE LAS PARTES, POR CONCEPTO DE PAGO DE PRESTACIONES LABORALES Y DERECHOS ADQUIRIDOS';
+    const tLines = doc.splitTextToSize(titulo, CW);
+    tLines.forEach(l => { doc.text(l, W/2, y, {align:'center'}); y += 6.2; });
+    y += 6;
+
+    // ── CUERPO — párrafos justificados Times 12 1.5 ──────────────────────────
+    doc.setFont('times','normal'); doc.setFontSize(12); doc.setTextColor(10,10,10);
+
+    const dir = emp?.direccion ? (emp.direccion+(emp.municipio?', '+emp.municipio:'')) : r.direccion || '___________________________';
+    const formaPago = dd.formaPago || 'Transferencia bancaria';
+    const cargo = emp?.position || r.cargo || '___________________________';
+
+    const parrafos = [
+      `El suscrito trabajador dominicano, mayor de edad, provisto de la Cédula de Identidad y Electoral No. ${r.cedula||'___'}, domiciliado y residente en ${dir}, por el presente documento DECLARA de manera libre y voluntaria haber recibido de TRANSPORTE EMPRESARIAL AMALFI, SRL, RNC No. 131079989, el valor siguiente:`,
+
+      `La suma de ${fmtM(r.total)} por concepto del pago de sus derechos adquiridos debido a la terminación del contrato de trabajo que le unía con la compañía TRANSPORTE EMPRESARIAL AMALFI, SRL, RNC No. 131079989.`,
+
+      `Dicha suma está conforme con la planilla de liquidación emitida por el Ministerio de Trabajo de la República Dominicana, suma que ha sido pagada en ${formaPago}.`,
+
+      `La mencionada suma tiene por concepto pago total y definitivo de los derechos adquiridos, bonificaciones, salarios y prestaciones que me correspondían al desprenderme con motivo de la terminación del contrato de trabajo que existió entre el suscrito y la empresa TRANSPORTE EMPRESARIAL AMALFI, SRL, para la cual desarrollé la labor de ${cargo} en un período comprendido entre el ${r.fechaIni} hasta el ${r.fechaFin}.`,
+
+      `Con el recibo de la suma indicada en el párrafo anterior, otorgo a TRANSPORTE EMPRESARIAL AMALFI, SRL, RNC No. 131079989, formal recibo de descargo, finiquito y carta de pago en forma legal; declarando consecuentemente haber sido total y definitivamente desinteresado con dicho pago.`,
+
+      `De acuerdo con lo establecido por el Código de Trabajo y el reglamento de trabajo, no teniendo nada que reclamar con respecto de comisiones, bonificación o participación de los beneficios de la empresa, horas extras, nocturnas, o cualesquiera otros derechos o conceptos derivados del contrato de trabajo.`,
+
+      `En virtud del presente descargo RENUNCIO de manera formal, expresa e irrevocable a interponer cualquier tipo de acción, instancia, demanda, indemnización o cualquier índole de compensación por daños y perjuicio, denuncia, querella, interés, reclamación de cualquier tipo o derecho que tuviere su origen directa o indirectamente en el pago de mis prestaciones laborales.`,
+
+      `Declaro que no tengo nada más que reclamar a mi antiguo empleador TRANSPORTE EMPRESARIAL AMALFI, SRL, ni a ninguna otra persona física o moral. Asimismo, reconozco y declaro que no tengo ninguna reclamación de tipo laboral, civil o penal, ni de ninguna otra naturaleza pasada, presente o futura derivada del contrato de trabajo suscrito entre ambas partes y su terminación. Declaro también mi completa satisfacción y conformidad con las sumas recibidas hasta esta fecha.`,
+
+      `Asimismo manifiesto que durante el tiempo en que presté mis servicios para TRANSPORTE EMPRESARIAL AMALFI, SRL no sufrí ninguna enfermedad profesional o accidente de trabajo. Recibí puntualmente el pago y goce de todas y cada una de las prestaciones a las que tenía derecho, tales como salarios, descansos semanales y vacaciones, entre otros, conforme a la legislación laboral vigente.`,
+
+      `Mediante este mismo documento DESISTO Y RENUNCIO pura y simplemente de manera formal, expresa e irrevocable a toda acción, pretensión, reclamación, derecho, embargo, demanda o reclamaciones que tenga contra TRANSPORTE EMPRESARIAL AMALFI, SRL, así como contra cualquiera de sus accionistas, empleadores, mandatarios, directores o empleados.`,
+
+      `Las partes le otorgan al presente Acuerdo Transaccional y Recibo de Descargo el carácter de sentencia con autoridad de cosa irrevocablemente juzgada de conformidad con las disposiciones previstas por el artículo 2052 del Código Civil de la República Dominicana.`,
+    ];
+
+    const checkPage = (needed=20) => {
+      if (y + needed > PH - 32) { doc.addPage(); y = MT; }
+    };
+
+    parrafos.forEach((p, i) => {
+      checkPage(18);
+      const lines = doc.splitTextToSize(p, CW);
+      doc.text(lines, ML, y, {align:'justify', maxWidth: CW});
+      y += lines.length * LH12 + 5;
+    });
+
+    // ── CIERRE ────────────────────────────────────────────────────────────────
+    checkPage(30);
+    y += 2;
+    const cierreLines = doc.splitTextToSize(
+      `En fe de lo cual, para que así conste, suscribo y firmo el presente recibo de prestaciones laborales y descargo total e incondicional.`, CW);
+    doc.text(cierreLines, ML, y, {align:'justify', maxWidth: CW});
+    y += cierreLines.length * LH12 + 4;
+
+    const ciudadFirma = dd.ciudad || 'Santo Domingo';
+    doc.text(
+      `En la ciudad de ${ciudadFirma}, República Dominicana, a los ${diaNum} días del mes de ${mesStr} del año ${anioNum}.`,
+      ML, y, {align:'justify', maxWidth: CW}
+    );
+    y += LH12 * 2 + 10;
+
+    // ── FIRMA EMPLEADO ────────────────────────────────────────────────────────
+    checkPage(50);
+    doc.setFont('times','normal'); doc.setFontSize(12);
+    doc.text('Por Sí,', ML, y); y += 16;
+    doc.setDrawColor(0); doc.setLineWidth(0.4);
+    doc.line(ML, y, ML+70, y); y += 5;
+    doc.setFont('times','bold');
+    doc.text(r.nombre||'___________________________', ML, y); y += 5;
+    doc.setFont('times','normal');
+    doc.text('Trabajador suscribiente', ML, y); y += 14;
+
+    // ── HUELLAS ───────────────────────────────────────────────────────────────
+    checkPage(40);
+    const huellaBox = (label, x, yy) => {
+      doc.setDrawColor(180); doc.setLineWidth(0.3);
+      doc.rect(x, yy, 28, 32);
+      doc.setFont('times','normal'); doc.setFontSize(9); doc.setTextColor(100);
+      doc.text(label, x+14, yy+36, {align:'center'});
+      doc.setTextColor(0);
+    };
+    huellaBox('Pulgar Izquierdo', ML, y);
+    huellaBox('Pulgar Derecho', ML+36, y);
+    y += 44;
+
+    // ── CERTIFICACIÓN NOTARIAL ────────────────────────────────────────────────
+    checkPage(60);
+    doc.setDrawColor(0); doc.setLineWidth(0.5);
+    doc.line(ML, y, W-MR, y); y += 8;
+
+    doc.setFont('times','bold'); doc.setFontSize(12); doc.setTextColor(0);
+    doc.text('CERTIFICACIÓN NOTARIAL', W/2, y, {align:'center'}); y += 8;
+
+    const notario = dd.notario || '___________________________';
+    const certTxt = `YO, ${notario}, Abogado Notario Público de los del Número del Distrito Nacional, CERTIFICO Y DOY FE: que la firma que antecede fue puesta en mi presencia, libre y voluntariamente, por el señor(a) ${r.nombre||'___'}, de generales que constan, quien manifestó bajo la fe del juramento que esa firma es la que acostumbra a usar en todos sus actos públicos como privados.`;
+    doc.setFont('times','normal');
+    const certLines = doc.splitTextToSize(certTxt, CW);
+    doc.text(certLines, ML, y, {align:'justify', maxWidth:CW});
+    y += certLines.length * LH12 + 5;
+
+    doc.text(
+      `En la ciudad de ${ciudadFirma}, Distrito Nacional, Capital de la República Dominicana, a los ${diaNum} días del mes de ${mesStr} del año ${anioNum}.`,
+      ML, y, {align:'justify', maxWidth: CW}
+    );
+    y += LH12 * 2 + 14;
+
+    // Firma notarial
+    checkPage(30);
+    doc.line(ML, y, ML+70, y); y += 5;
+    doc.setFont('times','bold');
+    doc.text(notario, ML, y); y += 5;
+    doc.setFont('times','normal');
+    doc.text('Abogado Notario Público', ML, y);
+
+    // ── GUARDAR ───────────────────────────────────────────────────────────────
+    const slug = (r.nombre||'').replace(/\s+/g,'_').toUpperCase();
+    doc.save(`Descargo_${slug}_${diaNum}-${mesStr}-${anioNum}.pdf`);
+  }
+
   // ── Generar Ficha de Salida TSS (PDF automático al desvincular) ─────────────
   function generateFichaSalidaPDF(r, emp) {
     const { jsPDF } = window.jspdf;
@@ -3627,6 +3784,686 @@ function Prestaciones({ employees, saveEmployee, setEmployees }) {
 
     const slug = (r.nombre||'empleado').replace(/\s+/g,'_').toUpperCase();
     doc.save(`FichaSalida_${slug}_${r.fechaFin.replace(/\//g,'-')}.pdf`);
+  }
+
+
+  // ═══════════════════════════════════════════════════════════════════════
+  //  GENERADORES DEL EXPEDIENTE DE SALIDA — 5 DOCUMENTOS
+  // ═══════════════════════════════════════════════════════════════════════
+
+  // ── 2. RECIBO DE PAGO ───────────────────────────────────────────────────
+  function generarReciboPago(r, emp) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'mm', format:'a4' });
+    const W=210, ML=20, MR=20, CW=170;
+    let y=18;
+    const fmtM = v=>'RD$'+(Math.round((parseFloat(v)||0)*100)/100).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const hr = (yy,c=[217,217,217],lw=0.3)=>{doc.setDrawColor(...c);doc.setLineWidth(lw);doc.line(ML,yy,W-MR,yy);};
+
+    // Logo + encabezado
+    try{doc.addImage(LOGO_TEA,'PNG',W/2-12,y,24,14,undefined,'FAST');y+=17;}catch(e){y+=4;}
+    doc.setFont('times','bold');doc.setFontSize(14);doc.setTextColor(0,0,0);
+    doc.text('TRANSPORTE EMPRESARIAL AMALFI, S.R.L.',W/2,y,{align:'center'});y+=6;
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(80,80,80);
+    doc.text('RNC: 131-07998-9  ·  Departamento de Recursos Humanos',W/2,y,{align:'center'});y+=7;
+
+    hr(y,[0,0,0],0.5);y+=4;
+    doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(0,0,0);
+    doc.text('RECIBO DE PAGO DE PRESTACIONES LABORALES',W/2,y,{align:'center'});y+=4;
+    hr(y,[0,0,0],0.5);y+=9;
+
+    // Código de recibo + fecha
+    const codigoRecibo = 'REC-'+new Date().getFullYear()+'-'+String(Date.now()).slice(-5);
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(90,90,90);
+    doc.text(`No. Recibo: ${codigoRecibo}`,ML,y);
+    doc.text(`Fecha: ${r.fecha}`,W-MR,y,{align:'right'});y+=10;
+
+    // Datos del beneficiario
+    doc.setFillColor(240,244,252);doc.rect(ML,y,CW,30,'F');
+    doc.setDrawColor(180,190,210);doc.setLineWidth(0.2);doc.rect(ML,y,CW,30);
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(0,51,102);
+    doc.text('BENEFICIARIO',ML+3,y+6);
+    const cols=[ML+3,ML+88];
+    const flds=[
+      ['Nombre completo:',r.nombre,'Cédula:',r.cedula],
+      ['Cargo:',emp?.position||'—','NSS:',emp?.nss||'—'],
+      ['Fecha de ingreso:',r.fechaIni,'Fecha de salida:',r.fechaFin],
+    ];
+    let fy=y+12;
+    flds.forEach(([l1,v1,l2,v2])=>{
+      doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(90,90,90);
+      doc.text(l1,cols[0],fy);doc.text(l2,cols[1],fy);
+      doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(10,10,10);
+      doc.text(String(v1||'—'),cols[0]+28,fy);doc.text(String(v2||'—'),cols[1]+18,fy);
+      fy+=7;
+    });
+    y+=34;
+
+    // Tabla de conceptos pagados
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(0,0,0);
+    doc.text('DESGLOSE DE PAGO',ML,y+5);y+=8;
+
+    // Header tabla
+    doc.setFillColor(0,51,102);doc.rect(ML,y,CW,7,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(255,255,255);
+    doc.text('Concepto',ML+2,y+4.8);
+    doc.text('Monto (RD$)',W-MR-2,y+4.8,{align:'right'});
+    y+=7;
+
+    const items=[
+      ['Salario Preaviso ('+r.pravisoDias+' días)',r.preaviso],
+      ['Auxilio de Cesantía ('+r.cesantiaDias+' días)',r.cesantia],
+      ['Vacaciones no disfrutadas ('+r.vacDias+' días)',r.vacaciones],
+      ['Salario de Navidad (proporcional)',r.navidad],
+    ];
+    items.forEach((itm,i)=>{
+      if(i%2===0){doc.setFillColor(248,250,255);doc.rect(ML,y,CW,7,'F');}
+      doc.setDrawColor(220,225,235);doc.setLineWidth(0.15);doc.rect(ML,y,CW,7);
+      doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(20,20,20);
+      doc.text(itm[0],ML+2,y+4.8);
+      doc.setFont('helvetica','bold');
+      doc.text(fmtM(itm[1]),W-MR-2,y+4.8,{align:'right'});
+      y+=7;
+    });
+
+    // Total
+    doc.setFillColor(22,163,74);doc.rect(ML,y,CW,10,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(255,255,255);
+    doc.text('TOTAL RECIBIDO:',ML+3,y+7);
+    doc.text(fmtM(r.total),W-MR-2,y+7,{align:'right'});
+    y+=16;
+
+    // Forma de pago
+    doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(60,60,60);
+    doc.text(`Forma de pago: ${emp?.metodoPago||'Transferencia bancaria'}   ·   Banco: ${emp?.bank||'—'}   ·   Cta: ${emp?.account||'—'}`,ML,y);
+    y+=14;
+
+    // Declaración
+    hr(y,[180,180,180],0.3);y+=6;
+    doc.setFont('helvetica','italic');doc.setFontSize(8);doc.setTextColor(50,50,50);
+    const decl='Yo, '+r.nombre+', con cédula de identidad No. '+r.cedula+', declaro haber recibido la cantidad de '+
+      fmtM(r.total)+' correspondiente a mis prestaciones laborales y derechos adquiridos por terminación de contrato '+
+      'con la empresa Transporte Empresarial Amalfi, S.R.L. Con el cobro de esta suma, doy mi total conformidad y descargo.';
+    const declLines=doc.splitTextToSize(decl,CW);
+    doc.text(declLines,ML,y);y+=declLines.length*4+12;
+
+    // Firmas
+    hr(y,[200,200,200],0.2);y+=8;
+    const sw=CW/2-10;
+    [[ML,'Firma del Ex Trabajador','(Firma y cédula)'],[ML+CW/2+6,'Autorizado por RR.HH.','Transporte Empresarial Amalfi']].forEach(([sx,lbl,sub])=>{
+      doc.setDrawColor(80,80,80);doc.setLineWidth(0.4);doc.line(sx,y+12,sx+sw,y+12);
+      doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(0,0,0);doc.text(lbl,sx,y+17);
+      doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(90,90,90);doc.text(sub,sx,y+21);
+    });
+
+    const pH=doc.internal.pageSize.getHeight();
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(160,160,160);
+    doc.text(`${codigoRecibo}  ·  Generado: ${r.fecha}  ·  RNC: 131-07998-9`,W/2,pH-7,{align:'center'});
+    doc.save(`ReciboPago_${(r.nombre||'').replace(/\s+/g,'_').toUpperCase()}.pdf`);
+  }
+
+  // ── 3. DESCARGO LABORAL ─────────────────────────────────────────────────
+  function generarDescargoLaboral(r, emp) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'mm', format:'a4' });
+    const W=210, ML=22, MR=22, CW=166;
+    let y=18;
+    const fmtM=v=>'RD$'+(Math.round((parseFloat(v)||0)*100)/100).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const hr=(yy,c=[200,200,200],lw=0.3)=>{doc.setDrawColor(...c);doc.setLineWidth(lw);doc.line(ML,yy,W-MR,yy);};
+
+    try{doc.addImage(LOGO_TEA,'PNG',W/2-12,y,24,14,undefined,'FAST');y+=17;}catch(e){y+=4;}
+    doc.setFont('times','bold');doc.setFontSize(14);doc.setTextColor(0,0,0);
+    doc.text('TRANSPORTE EMPRESARIAL AMALFI, S.R.L.',W/2,y,{align:'center'});y+=6;
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(80,80,80);
+    doc.text('RNC: 131-07998-9  ·  Santo Domingo, República Dominicana',W/2,y,{align:'center'});y+=8;
+
+    hr(y,[0,0,0],0.5);y+=5;
+    doc.setFont('helvetica','bold');doc.setFontSize(13);doc.setTextColor(0,0,0);
+    doc.text('CARTA DE DESCARGO LABORAL',W/2,y,{align:'center'});y+=4;
+    hr(y,[0,0,0],0.5);y+=10;
+
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(40,40,40);
+    doc.text(`Santo Domingo, D.N., ${r.fecha}`,W-MR,y,{align:'right'});y+=10;
+
+    // Cuerpo del documento
+    const tipoTexto = r.tipo==='despido'?'mediante desahucio de acuerdo al Art. 75 del Código de Trabajo':
+      r.tipo==='renuncia'?'mediante renuncia voluntaria presentada por el trabajador':
+      r.tipo==='despido_just'?'mediante despido justificado según el Art. 88 del Código de Trabajo':
+      'de mutuo acuerdo entre las partes';
+
+    const parrafos=[
+      `Yo, ${r.nombre}, dominicano(a), mayor de edad, portador(a) de la cédula de identidad y electoral No. ${r.cedula}, NSS: ${emp?.nss||'—'}, por medio del presente instrumento:`,
+      `DECLARO Y HAGO CONSTAR que he recibido a mi completa satisfacción de la empresa TRANSPORTE EMPRESARIAL AMALFI, S.R.L. (RNC: 131-07998-9), la totalidad de las sumas correspondientes a mis prestaciones laborales y derechos adquiridos, con motivo de la terminación de mi contrato de trabajo ${tipoTexto}, con fecha efectiva ${r.fechaFin}.`,
+      `Las prestaciones recibidas corresponden al período laborado desde el ${r.fechaIni} hasta el ${r.fechaFin} (${r.tiempoStr}), ocupando el cargo de ${emp?.position||'—'}, con un salario mensual de ${fmtM(r.salMensual)}, para un TOTAL RECIBIDO de: ${fmtM(r.total)}.`,
+      `Con la firma del presente documento, otorgo MI TOTAL DESCARGO a la empresa TRANSPORTE EMPRESARIAL AMALFI, S.R.L., a sus directivos, representantes legales y accionistas, de cualquier suma o reclamación de carácter laboral, ya sea de prestaciones, beneficios, bonificaciones, vacaciones, salario de navidad, horas extras u otra indemnización que pudiese corresponderme en virtud de la relación laboral antes mencionada.`,
+      `Declaro igualmente que no tengo pendiente ningún reclamo de naturaleza laboral, previsional o de cualquier otro tipo en contra de la empresa referida y que el pago recibido me satisface plenamente.`,
+    ];
+
+    parrafos.forEach(p=>{
+      const lines=doc.splitTextToSize(p,CW);
+      doc.setFont('helvetica','normal');doc.setFontSize(9.5);doc.setTextColor(30,30,30);
+      // Justificado simulado
+      doc.text(lines,ML,y,{lineHeightFactor:1.6});
+      y+=lines.length*6+7;
+    });
+
+    // EN CONSTANCIA
+    y+=4;
+    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(0,0,0);
+    doc.text('EN CONSTANCIA de lo anterior, firmo el presente en la ciudad de Santo Domingo, Distrito Nacional,',ML,y);y+=6;
+    doc.text(`siendo las ${new Date().toLocaleTimeString('es-DO',{hour:'2-digit',minute:'2-digit'})} del día ${r.fecha}.`,ML,y);
+    y+=20;
+
+    // Firmas
+    const sw=(CW-20)/2;
+    [[ML,'_________________________','Firma del Ex Trabajador',r.nombre,'Cédula: '+r.cedula],
+     [ML+CW/2+8,'_________________________','Testigo / RR.HH.','Transporte Empresarial Amalfi','RNC: 131-07998-9']
+    ].forEach(([sx,line,lbl,name,sub])=>{
+      doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(40,40,40);
+      doc.text(line,sx,y);
+      doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(0,0,0);
+      doc.text(lbl,sx,y+5);
+      doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(70,70,70);
+      doc.text(name,sx,y+10);doc.text(sub,sx,y+14);
+    });
+
+    const pH=doc.internal.pageSize.getHeight();
+    doc.setFont('helvetica','normal');doc.setFontSize(6.5);doc.setTextColor(170,170,170);
+    doc.text(`Descargo Laboral · ${r.nombre} · ${r.fechaFin} · Transporte Empresarial Amalfi S.R.L.`,W/2,pH-7,{align:'center'});
+    doc.save(`DescargoLaboral_${(r.nombre||'').replace(/\s+/g,'_').toUpperCase()}.pdf`);
+  }
+
+  // ── 4. CARTA DE TERMINACIÓN ─────────────────────────────────────────────
+  function generarCartaTerminacion(r, emp) {
+    const { jsPDF } = window.jspdf;
+
+    // ── Convertir número a palabras (español dominicano) ──────────────────
+    const UNIDADES = ['','uno','dos','tres','cuatro','cinco','seis','siete','ocho','nueve',
+      'diez','once','doce','trece','catorce','quince','dieciséis','diecisiete','dieciocho','diecinueve',
+      'veinte','veintiuno','veintidós','veintitrés','veinticuatro','veinticinco','veintiséis','veintisiete','veintiocho','veintinueve','treinta','treinta y uno'];
+    const MESES_LETRAS = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+    const MESES_NOMBRE = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+
+    function anioLetras(y) {
+      const miles = Math.floor(y/1000);
+      const resto = y % 1000;
+      const cents = Math.floor(resto/100);
+      const decU  = resto % 100;
+      const CIENTOS = ['','cien','doscientos','trescientos','cuatrocientos','quinientos','seiscientos','setecientos','ochocientos','novecientos'];
+      let result = '';
+      if (miles === 1) result += 'mil';
+      else if (miles > 1) result += UNIDADES[miles]+' mil';
+      if (cents > 0) result += (result?' ':'') + CIENTOS[cents];
+      if (decU > 0 && decU <= 31) result += (result?' ':'') + UNIDADES[decU];
+      return result;
+    }
+
+    function fechaLarga(isoStr) {
+      // parse YYYY-MM-DD
+      const parts = (isoStr||'').split('-');
+      if (parts.length < 3) return {dia:'—',mes:'—',anio:'—',diaNum:'—',anioNum:'—'};
+      const d = parseInt(parts[2]), m = parseInt(parts[1])-1, y = parseInt(parts[0]);
+      return {
+        dia:   UNIDADES[d]  || String(d),
+        diaNum: String(d),
+        mes:   MESES_LETRAS[m] || '—',
+        anio:  anioLetras(y),
+        anioNum: String(y),
+      };
+    }
+
+    // Parsear fechas (soporte ISO YYYY-MM-DD o DD/MM/AAAA)
+    function parseISO(raw) {
+      if (!raw) return '';
+      if (raw.includes('/')) { const [d,m,y]=raw.split('/'); return `${y}-${m.padStart(2,'0')}-${d.padStart(2,'0')}`; }
+      return raw;
+    }
+
+    const fechaDocISO = new Date().toISOString().substring(0,10);
+    const fechaDoc  = fechaLarga(fechaDocISO);
+    const fechaFin  = fechaLarga(parseISO(r.fechaFinISO || r.fechaFin));
+    const fechaIni  = fechaLarga(parseISO(r.fechaIniISO || r.fechaIni));
+
+    // ── jsPDF setup ──────────────────────────────────────────────────────
+    const doc = new jsPDF({ unit:'mm', format:'a4' });
+    const W=210, ML=25, MR=25, CW=160;
+    let y = 22;
+
+    // ── Fuente y colores ─────────────────────────────────────────────────
+    const setH = (sz,bold) => { doc.setFont('times', bold?'bold':'normal'); doc.setFontSize(sz); doc.setTextColor(0,0,0); };
+    const setB = (sz)      => { doc.setFont('times','normal'); doc.setFontSize(sz); doc.setTextColor(0,0,0); };
+
+    // ── ENCABEZADO EMPRESA ───────────────────────────────────────────────
+    setH(13, true);
+    doc.text('TRANSPORTE EMPRESARIAL AMALFI SRL.', ML, y); y += 6;
+    setH(10, false);
+    doc.text('Av. Monumental #6, Ens. Los Grises, S.D.', ML, y); y += 5;
+    doc.text('Teléfonos (809) 560-3012', ML, y); y += 5;
+    doc.text('RNC 1-31-07998-9', ML, y); y += 10;
+
+    // Línea separadora fina
+    doc.setDrawColor(0,0,0); doc.setLineWidth(0.3);
+    doc.line(ML, y, W-MR, y); y += 8;
+
+    // ── FECHA (alineada a la derecha, en letras) ─────────────────────────
+    setB(11);
+    const fechaDocStr = `${fechaDoc.dia} (${fechaDoc.diaNum}) de ${fechaDoc.mes} del ${fechaDoc.anio} (${fechaDoc.anioNum})`;
+    doc.text(fechaDocStr, W-MR, y, {align:'right'}); y += 6;
+    doc.text('Santo Domingo', W-MR, y, {align:'right'}); y += 10;
+
+    // ── DESTINATARIO ─────────────────────────────────────────────────────
+    setB(11);
+    doc.text('Señor', ML, y); y += 6;
+    setH(11, true);
+    doc.text((r.nombre||'').toUpperCase(), ML, y); y += 5;
+    setB(11);
+    doc.text(r.cedula||'—', ML, y); y += 5;
+    doc.text('Ciudad.', ML, y); y += 10;
+
+    // ── SALUDO ───────────────────────────────────────────────────────────
+    setB(11);
+    doc.text('Distinguido señor:', ML, y); y += 10;
+
+    // ── CUERPO PRINCIPAL ─────────────────────────────────────────────────
+    // Construcción del párrafo principal
+    const paraText =
+      'Por medio de la presente le informamos que efectivo a partir del día '+
+      fechaFin.dia+' ('+fechaFin.diaNum+') de '+fechaFin.mes+' del '+
+      fechaFin.anio+' ('+fechaFin.anioNum+') se le terminará su contrato de trabajo '+
+      'que inició el día '+fechaIni.dia+' ('+fechaIni.diaNum+') de '+fechaIni.mes+
+      ' del '+fechaIni.anio+' ('+fechaIni.anioNum+'), consecuentemente, le pagamos '+
+      'sus prestaciones laborales correspondientes a pre-aviso, cesantía y demás derechos '+
+      'laborales adquiridos y no disfrutados establecidos en el Código de Trabajo de la '+
+      'República Dominicana.';
+
+    setB(11);
+    const paraLines = doc.splitTextToSize(paraText, CW);
+
+    // Simular justificado: texto normal izquierda (jsPDF no hace justify nativo bien)
+    doc.text(paraLines, ML, y, {lineHeightFactor: 1.4}); y += paraLines.length * 5.5 + 8;
+
+    // Párrafo 2
+    setB(11);
+    const p2 = 'Favor de firmar una copia de esta comunicación en señal del acuse de recibo.';
+    const p2Lines = doc.splitTextToSize(p2, CW);
+    doc.text(p2Lines, ML, y, {lineHeightFactor:1.4}); y += p2Lines.length * 5.5 + 14;
+
+    // ── CIERRE ───────────────────────────────────────────────────────────
+    setB(11);
+    doc.text('Muy atentamente,', ML, y); y += 18;
+
+    // Firma
+    setH(11, true);
+    doc.text('Lic. Yanelci Alberti Piña', ML, y); y += 5;
+    setB(11);
+    doc.text('Gerente Recursos Humanos', ML, y); y += 5;
+    doc.text('Transporte Empresarial Amalfi, SRL.', ML, y); y += 20;
+
+    // ── SECCIÓN RECIBIDO POR ─────────────────────────────────────────────
+    doc.setDrawColor(0,0,0); doc.setLineWidth(0.3);
+    doc.line(ML, y, W-MR, y); y += 6;
+
+    setB(11);
+    const lineSpace = 80; // ancho de línea para escribir a mano
+
+    doc.text('Recibido por:', ML, y);
+    doc.setDrawColor(100,100,100); doc.setLineWidth(0.25);
+    doc.line(ML+28, y+0.5, ML+28+lineSpace, y+0.5); y += 9;
+
+    doc.setFont('times','normal'); doc.setFontSize(11);
+    doc.text('Cédula:', ML, y);
+    doc.line(ML+16, y+0.5, ML+16+lineSpace, y+0.5); y += 9;
+
+    doc.text('Fecha:', ML, y);
+    doc.line(ML+14, y+0.5, ML+14+lineSpace, y+0.5); y += 7;
+
+    // Nota pequeña
+    doc.setFont('helvetica','italic'); doc.setFontSize(7.5); doc.setTextColor(90,90,90);
+    doc.text('El trabajador completará a mano los campos de cédula y fecha.', ML, y);
+
+    // ── PIE DE PÁGINA ────────────────────────────────────────────────────
+    const pH = doc.internal.pageSize.getHeight();
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(160,160,160);
+    doc.text('Transporte Empresarial Amalfi, SRL.  ·  RNC: 131-07998-9  ·  Departamento de Recursos Humanos', W/2, pH-8, {align:'center'});
+
+    const slug = (r.nombre||'').replace(/\s+/g,'_').toUpperCase();
+    doc.save(`CartaTerminacion_${slug}.pdf`);
+  }
+
+  async function generarExpedienteCompleto(r, emp) {
+    const slug = (r.nombre||'empleado').replace(/\s+/g,'_').toUpperCase();
+    const delay = ms => new Promise(res => setTimeout(res, ms));
+    // 1. Cálculo de prestaciones
+    descargarPDF();
+    await delay(600);
+    // 2. Ficha de Salida TSS
+    generateFichaSalidaPDF({...r, fechaFinISO: r.fechaFinISO||r.fechaFin}, emp);
+    await delay(600);
+    // 3. Recibo de pago
+    generarReciboPago(r, emp);
+    await delay(600);
+    // 4. Descargo laboral
+    generarDescargoLaboral(r, emp);
+    await delay(600);
+    // 5. Carta de terminación
+    generarCartaTerminacion(r, emp);
+  }
+
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // GENERADOR MAESTRO — Expediente completo de salida (5 PDFs en ZIP)
+  // Estructura: empleados/salida/{nombre}/
+  //   ├── calculo_prestaciones.pdf
+  //   ├── recibo_pago.pdf
+  //   ├── descargo_laboral.pdf
+  //   ├── carta_terminacion.pdf
+  //   └── salida_tss.pdf
+  // ═══════════════════════════════════════════════════════════════════════════
+  async function generarExpedienteCompleto(r, emp) {
+    if (!window.JSZip) { alert('JSZip no disponible. Descargando PDFs individualmente...'); return; }
+    const zip = new window.JSZip();
+    const nombreSlug = (r.nombre||'empleado').replace(/\s+/g,'_').toUpperCase();
+    const fechaSlug  = (r.fechaFin||'').replace(/\//g,'-');
+    const folder = zip.folder(`empleados/salida/${nombreSlug}`);
+
+    const fmtM = v => 'RD$' + (Math.round((parseFloat(v)||0)*100)/100)
+      .toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});
+
+    // ── Helper: doc → Uint8Array ──────────────────────────────────────────────
+    const docBytes = (doc) => new Uint8Array(doc.output('arraybuffer'));
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 1. CÁLCULO DE PRESTACIONES
+    // ─────────────────────────────────────────────────────────────────────────
+    const docP = buildPrestacionesPDF(r);
+    folder.file('calculo_prestaciones.pdf', docBytes(docP));
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 2. RECIBO DE PAGO
+    // ─────────────────────────────────────────────────────────────────────────
+    const docRec = buildReciboPagoPDF(r, emp, fmtM);
+    folder.file('recibo_pago.pdf', docBytes(docRec));
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 3. DESCARGO LABORAL
+    // ─────────────────────────────────────────────────────────────────────────
+    const docDesc = buildDescargoPDF(r, emp, fmtM);
+    folder.file('descargo_laboral.pdf', docBytes(docDesc));
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 4. CARTA DE TERMINACIÓN
+    // ─────────────────────────────────────────────────────────────────────────
+    const docCarta = buildCartaTerminacionPDF(r, emp);
+    folder.file('carta_terminacion.pdf', docBytes(docCarta));
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // 5. FORMULARIO SALIDA TSS
+    // ─────────────────────────────────────────────────────────────────────────
+    const docTSS = buildFichaSalidaTSSPDF(r, emp, fmtM);
+    folder.file('salida_tss.pdf', docBytes(docTSS));
+
+    // ── Generar y descargar ZIP ───────────────────────────────────────────────
+    const blob = await zip.generateAsync({ type:'blob' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
+    a.download = `Expediente_Salida_${nombreSlug}_${fechaSlug}.zip`;
+    document.body.appendChild(a); a.click();
+    document.body.removeChild(a); URL.revokeObjectURL(url);
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // Helpers comunes para todos los PDFs
+  // ─────────────────────────────────────────────────────────────────────────
+  function pdfBase(landscape=false) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'mm', format:'a4', orientation: landscape?'landscape':'portrait' });
+    return doc;
+  }
+  function pdfHeader(doc, titulo, subtitulo='') {
+    const W = doc.internal.pageSize.getWidth();
+    const ML = 20;
+    let y = 16;
+    try { doc.addImage(LOGO_TEA,'PNG',W/2-11,y,22,14,undefined,'FAST'); y+=17; } catch(e){y+=4;}
+    doc.setFont('times','bold'); doc.setFontSize(14); doc.setTextColor(0,0,0);
+    doc.text('República Dominicana', W/2, y, {align:'center'}); y+=6;
+    doc.setFont('times','normal'); doc.setFontSize(10); doc.setTextColor(50,50,50);
+    doc.text('Ministerio de Trabajo  ·  Transporte Empresarial Amalfi, S.R.L.', W/2, y, {align:'center'}); y+=5;
+    doc.setDrawColor(180,180,180); doc.setLineWidth(0.3); doc.line(ML,y,W-ML,y); y+=5;
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(0,0,0);
+    doc.text(titulo, W/2, y, {align:'center'}); y+=4;
+    if(subtitulo){doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(80,80,80);doc.text(subtitulo,W/2,y,{align:'center'});y+=4;}
+    doc.setDrawColor(180,180,180); doc.line(ML,y,W-ML,y); y+=7;
+    return y;
+  }
+  function pdfFoot(doc, fecha) {
+    const W = doc.internal.pageSize.getWidth();
+    const H = doc.internal.pageSize.getHeight();
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(150,150,150);
+    doc.text(`Generado: ${fecha}  ·  RNC: 131-07998-9  ·  Sistema de Nómina v2.0`, W/2, H-7, {align:'center'});
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PDF 1 — Cálculo de Prestaciones (same as descargarPDF but returns doc)
+  // ─────────────────────────────────────────────────────────────────────────
+  function buildPrestacionesPDF(r) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'mm', format:'a4' });
+    const W=210, ML=20, MR=20, CW=170;
+    const fmtM = v => 'RD$'+(Math.round((parseFloat(v)||0)*100)/100).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const hr = (y,c=[217,217,217],lw=0.3)=>{doc.setDrawColor(...c);doc.setLineWidth(lw);doc.line(ML,y,W-MR,y);};
+    let y = 16;
+    try{doc.addImage(LOGO_TEA,'PNG',W/2-11,y,22,14,undefined,'FAST');y+=17;}catch(e){y+=4;}
+    doc.setFont('times','bold');doc.setFontSize(14);doc.setTextColor(0,0,0);
+    doc.text('República Dominicana',W/2,y,{align:'center'});y+=6;
+    doc.setFont('times','normal');doc.setFontSize(10);doc.setTextColor(50,50,50);
+    doc.text('Ministerio de Trabajo',W/2,y,{align:'center'});y+=5;
+    hr(y);y+=5;
+    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(0,0,0);
+    doc.text('Cálculo de Prestaciones Laborales y Derechos Adquiridos',W/2,y,{align:'center'});y+=4;
+    hr(y);y+=8;
+    const tipoL=r.tipo==='despido'?'Desahucio (sin causa)':r.tipo==='renuncia'?'Renuncia voluntaria':r.tipo==='despido_just'?'Despido justificado (Art.88)':'Mutuo acuerdo';
+    const mid=ML+CW/2+4;
+    const camL=[['Cédula:',r.cedula||'—'],['Nombre:',r.nombre],['Empresa:','Transporte Empresarial Amalfi'],['Tipo de terminación:',tipoL]];
+    const camR=[['Fecha de ingreso:',r.fechaIni],['Fecha de salida:',r.fechaFin],['Tiempo laborado:',r.tiempoStr],['Salario mensual:',fmtM(r.salMensual)]];
+    let yL=y,yR=y;
+    camL.forEach(([l,v])=>{doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(90,90,90);doc.text(l,ML,yL);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(10,10,10);doc.text(String(v||'—'),ML,yL+5);yL+=12;});
+    camR.forEach(([l,v])=>{doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(90,90,90);doc.text(l,mid,yR);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(10,10,10);doc.text(String(v||'—'),mid,yR+5);yR+=12;});
+    y=Math.max(yL,yR)+4;hr(y,[0,0,0],0.4);y+=5;
+    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(0,0,0);
+    doc.text('Prestaciones Laborales y Derechos Adquiridos',W/2,y,{align:'center'});y+=4;
+    hr(y,[0,0,0],0.4);y+=7;
+    const cX=[ML,ML+66,ML+104,ML+126],cW=[64,36,18,42];
+    doc.setFillColor(225,225,225);doc.rect(ML,y,CW,7,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(0);
+    ['Concepto','Base Legal','Días','Monto'].forEach((h,i)=>doc.text(h,cX[i]+1,y+5));y+=7;
+    const rows=[['Salario Preaviso','Art. 76 C.T.',r.pravisoDias>0?String(r.pravisoDias):'N/A',r.preaviso],['Auxilio de Cesantía','Art. 80 C.T.',r.cesantiaDias>0?String(r.cesantiaDias):'N/A',r.cesantia],['Vacaciones no disfrutadas','Art. 177 C.T.',r.vacDias>0?String(r.vacDias):'N/A',r.vacaciones]];
+    rows.forEach((row,i)=>{if(i%2===0){doc.setFillColor(248,248,248);doc.rect(ML,y,CW,7,'F');}doc.setDrawColor(217);doc.setLineWidth(0.2);doc.rect(ML,y,CW,7);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(20,20,20);doc.text(row[0],cX[0]+1,y+5);doc.setTextColor(80,80,80);doc.text(row[1],cX[1]+1,y+5);doc.text(row[2],cX[2]+1,y+5);doc.setFont('helvetica','bold');doc.setTextColor(0);doc.text(fmtM(row[3]),cX[3]+cW[3]-1,y+5,{align:'right'});y+=7;});
+    doc.setFillColor(215,228,248);doc.rect(ML,y,CW,7,'F');doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(0);doc.text('Subtotal',cX[0]+1,y+5);doc.text(fmtM(r.subTotal),cX[3]+cW[3]-1,y+5,{align:'right'});y+=7;
+    doc.setFillColor(248,248,248);doc.rect(ML,y,CW,7,'F');doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(20,20,20);doc.text('Salario de Navidad',cX[0]+1,y+5);doc.setTextColor(80,80,80);doc.text('Art. 219 C.T.',cX[1]+1,y+5);doc.text('—',cX[2]+1,y+5);doc.setFont('helvetica','bold');doc.setTextColor(0);doc.text(fmtM(r.navidad),cX[3]+cW[3]-1,y+5,{align:'right'});y+=10;
+    hr(y,[100,100,100],0.5);y+=5;doc.setFont('helvetica','bold');doc.setFontSize(14);doc.setTextColor(0);doc.text('TOTAL A RECIBIR:',ML,y+1);doc.text(fmtM(r.total),W-MR,y+1,{align:'right'});y+=8;hr(y,[100,100,100],0.5);y+=9;
+    doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(85,85,85);
+    const nota='NOTA: Estos cálculos han sido realizados en base a las informaciones suministradas por la parte interesada. Por tanto, los mismos no se imponen a la parte contraria ni al juez de trabajo y no aplican en los casos de trabajadoras protegidas por la maternidad, trabajadores protegidos por el fuero sindical, ni trabajadores con VIH.';
+    const nl=doc.splitTextToSize(nota,CW);doc.text(nl,ML,y);y+=nl.length*4+10;
+    const sy=y+10;const th=CW/3;
+    [['Inspector de Trabajo','Ministerio de Trabajo'],['Representante RR.HH.','Transporte Empresarial Amalfi'],['Firma del Trabajador','Descargo: □ SÍ  □ NO']].forEach(([t,s],i)=>{const sx=ML+i*th+(i>0?2:0);const sw=th-6;doc.setDrawColor(100);doc.setLineWidth(0.4);doc.line(sx,sy,sx+sw,sy);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(0);doc.text(t,sx,sy+4);doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(85,85,85);doc.text(s,sx,sy+8);});
+    const pH=doc.internal.pageSize.getHeight();doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(150);doc.text(`Generado: ${r.fecha}  ·  Sistema de Nómina v2.0  ·  RNC: 131-07998-9`,W/2,pH-7,{align:'center'});
+    return doc;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PDF 2 — Recibo de Pago de Prestaciones
+  // ─────────────────────────────────────────────────────────────────────────
+  function buildReciboPagoPDF(r, emp, fmtM) {
+    const doc = pdfBase();
+    const W=210, ML=20, CW=170;
+    let y = pdfHeader(doc, 'RECIBO DE PAGO DE PRESTACIONES LABORALES', `No. ${String(Date.now()).slice(-6)}`);
+    // Datos
+    const mid=ML+CW/2+4;
+    [[['Empleado:',r.nombre],['Cédula:',r.cedula||'—'],['Cargo:',emp?.position||'—']],
+     [['Fecha de pago:',r.fechaFin],['Banco:',emp?.bank||'—'],['No. de cuenta:',emp?.account||'—']]
+    ].forEach((col,ci)=>{
+      let yy=y; const x=ci===0?ML:mid;
+      col.forEach(([l,v])=>{doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(90,90,90);doc.text(l,x,yy);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(0);doc.text(String(v||'—'),x,yy+5);yy+=12;});
+    });
+    y+=36; doc.setDrawColor(200);doc.setLineWidth(0.3);doc.line(ML,y,W-ML,y);y+=7;
+    // Tabla de conceptos
+    doc.setFillColor(225,225,225);doc.rect(ML,y,CW,7,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(0);
+    doc.text('Concepto',ML+2,y+5);doc.text('Monto',W-ML-2,y+5,{align:'right'});y+=7;
+    const items=[
+      ['Salario Preaviso ('+r.pravisoDias+' días)', r.preaviso],
+      ['Auxilio de Cesantía ('+r.cesantiaDias+' días)', r.cesantia],
+      ['Vacaciones no disfrutadas ('+r.vacDias+' días)', r.vacaciones],
+      ['Salario de Navidad proporcional', r.navidad],
+    ].filter(it=>it[1]>0);
+    items.forEach((it,i)=>{
+      if(i%2===0){doc.setFillColor(250,250,250);doc.rect(ML,y,CW,7,'F');}
+      doc.setDrawColor(220);doc.setLineWidth(0.15);doc.rect(ML,y,CW,7);
+      doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(20,20,20);
+      doc.text(it[0],ML+2,y+5);doc.setFont('helvetica','bold');doc.text(fmtM(it[1]),W-ML-2,y+5,{align:'right'});y+=7;
+    });
+    doc.setFillColor(215,230,215);doc.rect(ML,y,CW,9,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(0);
+    doc.text('TOTAL RECIBIDO:',ML+2,y+6.5);doc.text(fmtM(r.total),W-ML-2,y+6.5,{align:'right'});y+=16;
+    // Texto de recibo
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(30,30,30);
+    const txt = `Yo, ${r.nombre}, cédula ${r.cedula||'—'}, declaro haber recibido a mi entera satisfacción la suma de ${fmtM(r.total)} (${r.total.toLocaleString('es-DO',{minimumFractionDigits:2})} pesos dominicanos) por concepto de prestaciones laborales y derechos adquiridos correspondientes al período laborado del ${r.fechaIni} al ${r.fechaFin} en Transporte Empresarial Amalfi, S.R.L.`;
+    const lines=doc.splitTextToSize(txt,CW);doc.text(lines,ML,y);y+=lines.length*5+14;
+    // Firmas
+    [[ML,'Ex Empleado','Cédula: '+(r.cedula||'—')],[ML+CW/2+4,'Representante Empresa','RNC: 131-07998-9']].forEach(([x,t,s])=>{
+      doc.setDrawColor(100);doc.setLineWidth(0.4);doc.line(x,y,x+75,y);
+      doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(0);doc.text(t,x,y+4);
+      doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(80,80,80);doc.text(s,x,y+8);
+    });
+    pdfFoot(doc,r.fecha); return doc;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PDF 3 — Descargo Laboral
+  // ─────────────────────────────────────────────────────────────────────────
+  function buildDescargoPDF(r, emp, fmtM) {
+    const doc = pdfBase();
+    const W=210, ML=20, CW=170;
+    let y = pdfHeader(doc, 'DESCARGO LABORAL', 'Declaración de paz y salvo entre las partes');
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(20,20,20);
+    const intro = `En la ciudad de Santo Domingo, República Dominicana, siendo el ${r.fechaFin}, comparecen por una parte, TRANSPORTE EMPRESARIAL AMALFI, S.R.L., RNC 131-07998-9, en lo adelante "LA EMPRESA", y por la otra parte el(la) señor(a) ${r.nombre}, portador(a) de la cédula de identidad y electoral No. ${r.cedula||'—'}, en lo adelante "EL TRABAJADOR(A)".`;
+    const introLines=doc.splitTextToSize(intro,CW);doc.text(introLines,ML,y);y+=introLines.length*5+8;
+    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(0);
+    doc.text('DECLARACIONES',W/2,y,{align:'center'});y+=7;
+    const clauses=[
+      `PRIMERO: Que ${r.nombre} prestó servicios en la empresa desde el ${r.fechaIni} hasta el ${r.fechaFin}, para un total de ${r.tiempoStr}.`,
+      `SEGUNDO: Que la terminación del contrato de trabajo se produjo por: ${r.tipo==='despido'?'Desahucio (sin causa justificada, Art. 75 CT)':r.tipo==='renuncia'?'Renuncia voluntaria del trabajador':r.tipo==='despido_just'?'Despido justificado (Art. 88 CT)':'Mutuo acuerdo entre las partes'}.`,
+      `TERCERO: Que LA EMPRESA ha pagado al TRABAJADOR(A) la suma total de ${fmtM(r.total)} en concepto de prestaciones laborales y derechos adquiridos conforme al Código de Trabajo de la República Dominicana (Ley 16-92).`,
+      'CUARTO: Que el TRABAJADOR(A) declara haber recibido a su entera satisfacción todos los pagos que le corresponden por concepto de preaviso, cesantía, vacaciones, salario de navidad y demás derechos laborales, no teniendo ningún reclamo pendiente contra LA EMPRESA.',
+      'QUINTO: Que ambas partes declaran que con el presente DESCARGO LABORAL quedan libre de toda obligación recíproca derivada de la relación laboral que los unió, sin perjuicio de las obligaciones de confidencialidad y no competencia pactadas.',
+      'SEXTO: Que el TRABAJADOR(A) se compromete a devolver a LA EMPRESA todos los bienes, equipos, uniformes, credenciales, claves de acceso y cualquier otro activo de la empresa que tenga en su poder a la fecha del presente descargo.',
+    ];
+    clauses.forEach(cl=>{const cl_lines=doc.splitTextToSize(cl,CW);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(20,20,20);doc.text(cl_lines,ML,y);y+=cl_lines.length*5+6;});
+    doc.setFont('helvetica','bold');doc.setFontSize(9.5);doc.setTextColor(0);
+    doc.text('FIRMAS',W/2,y+4,{align:'center'});y+=10;
+    [[ML,r.nombre,'Cédula: '+(r.cedula||'—'),'EL TRABAJADOR(A)'],[ML+CW/2+4,'Transporte Emp. Amalfi','RNC: 131-07998-9','LA EMPRESA']].forEach(([x,n,id,rol])=>{
+      doc.setDrawColor(100);doc.setLineWidth(0.4);doc.line(x,y,x+76,y);
+      doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(0);doc.text(n.substring(0,28),x,y+4);
+      doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(70,70,70);doc.text(id,x,y+8);doc.text(rol,x,y+12);
+    });
+    pdfFoot(doc,r.fecha); return doc;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PDF 4 — Carta de Terminación Laboral
+  // ─────────────────────────────────────────────────────────────────────────
+  function buildCartaTerminacionPDF(r, emp) {
+    const doc = pdfBase();
+    const W=210, ML=20, CW=170;
+    let y = pdfHeader(doc, 'CARTA DE TERMINACIÓN LABORAL');
+    // Fecha y ciudad
+    doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(20,20,20);
+    doc.text('Santo Domingo, Rep. Dom., ' + r.fechaFin, W-ML, y, {align:'right'}); y+=8;
+    // Destinatario
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(0);
+    doc.text('Señor(a):', ML, y); y+=5;
+    doc.setFont('helvetica','normal');
+    doc.text(r.nombre, ML, y); y+=5;
+    if(emp?.position) doc.text(emp.position, ML, y);
+    y += 10;
+    doc.setFont('helvetica','bold');doc.text('Distinguido(a) colaborador(a):',ML,y);y+=8;
+    const tipoTexto = r.tipo==='despido'
+      ? 'Por medio de la presente, y de conformidad con el Artículo 75 del Código de Trabajo de la República Dominicana (Ley 16-92), le comunicamos la decisión de la empresa de dar por terminado el contrato de trabajo que nos une, sin causa justificada (DESAHUCIO), a partir del día '+r.fechaFin+'.'
+      : r.tipo==='renuncia'
+      ? 'Por medio de la presente, acusamos recibo de su carta de renuncia voluntaria con fecha '+r.fechaFin+'. Lamentamos su decisión y le agradecemos los servicios prestados a Transporte Empresarial Amalfi, S.R.L.'
+      : r.tipo==='despido_just'
+      ? 'Por medio de la presente, y de conformidad con el Artículo 88 del Código de Trabajo, le comunicamos la decisión de la empresa de dar por terminado su contrato de trabajo con CAUSA JUSTIFICADA, a partir del '+r.fechaFin+'.'
+      : 'Por medio de la presente se deja constancia del mutuo acuerdo entre las partes para dar por terminada la relación laboral a partir del '+r.fechaFin+'.';
+    const bodyLines=doc.splitTextToSize(tipoTexto,CW);doc.setFont('helvetica','normal');doc.setFontSize(9);doc.setTextColor(20,20,20);doc.text(bodyLines,ML,y);y+=bodyLines.length*5+7;
+    // Párrafo de derechos
+    const derechos=`En cumplimiento de las disposiciones legales, la empresa ha procedido a liquidar todos sus derechos laborales por un total de ${(Math.round((r.total||0)*100)/100).toLocaleString('es-DO',{minimumFractionDigits:2})} pesos dominicanos (RD$${(Math.round((r.total||0)*100)/100).toLocaleString('es-DO',{minimumFractionDigits:2})}), correspondientes a: ${[r.preaviso>0?'preaviso':'',r.cesantia>0?'cesantía':'',r.vacaciones>0?'vacaciones':'',r.navidad>0?'salario de navidad':''].filter(Boolean).join(', ')}.`;
+    const dLines=doc.splitTextToSize(derechos,CW);doc.text(dLines,ML,y);y+=dLines.length*5+7;
+    const cierre='Le deseamos éxito en sus próximas gestiones profesionales y agradecemos los servicios prestados a esta empresa durante su tiempo con nosotros.';
+    const cLines=doc.splitTextToSize(cierre,CW);doc.text(cLines,ML,y);y+=cLines.length*5+14;
+    doc.setFont('helvetica','normal');doc.text('Atentamente,',ML,y);y+=8;
+    doc.setDrawColor(100);doc.setLineWidth(0.4);doc.line(ML,y,ML+75,y);y+=4;
+    doc.setFont('helvetica','bold');doc.setFontSize(9);doc.text('Recursos Humanos',ML,y);y+=5;
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(70,70,70);doc.text('Transporte Empresarial Amalfi, S.R.L.',ML,y);y+=5;
+    doc.text('RNC: 131-07998-9',ML,y);
+    pdfFoot(doc,r.fecha); return doc;
+  }
+
+  // ─────────────────────────────────────────────────────────────────────────
+  // PDF 5 — Formulario de Salida TSS (versión retornable)
+  // ─────────────────────────────────────────────────────────────────────────
+  function buildFichaSalidaTSSPDF(r, emp, fmtM) {
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'mm', format:'a4' });
+    const W=210,ML=18,CW=174;
+    const NAVY=[0,51,102],GOLD=[232,160,32],WHITE=[255,255,255],GRAY=[80,90,110];
+    const fmt2=v=>'RD$'+(Math.round((parseFloat(v)||0)*100)/100).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const today2=new Date().toLocaleDateString('es-DO',{day:'2-digit',month:'2-digit',year:'numeric'});
+    let y=14;
+    doc.setFillColor(...NAVY);doc.rect(0,0,W,38,'F');
+    try{doc.addImage(LOGO_TEA,'PNG',ML,7,22,11);}catch(e){}
+    doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(...WHITE);
+    doc.text('TRANSPORTE EMPRESARIAL AMALFI, S.R.L.',W/2,14,{align:'center'});
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(180,200,230);
+    doc.text('RNC: 1-31-07998-9  ·  Departamento de Recursos Humanos',W/2,20,{align:'center'});
+    doc.setFillColor(...GOLD);doc.roundedRect(ML,24,CW,10,2,2,'F');
+    doc.setFont('helvetica','bold');doc.setFontSize(11);doc.setTextColor(...NAVY);
+    doc.text('FORMULARIO DE SALIDA EN LA TSS',W/2,30.5,{align:'center'});
+    y=46;
+    doc.setFont('helvetica','normal');doc.setFontSize(8);doc.setTextColor(...GRAY);
+    doc.text(`Fecha del formulario: ${today2}`,W-ML,y,{align:'right'});y+=6;
+    // Sección datos
+    const drawSec=(title,yy)=>{doc.setFillColor(230,236,248);doc.rect(ML,yy,CW,7,'F');doc.setDrawColor(0,51,102);doc.setLineWidth(.3);doc.rect(ML,yy,CW,7);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(...NAVY);doc.text(title,ML+3,yy+5);return yy+7;};
+    const drawF=(label,value,x,yy,w)=>{doc.setFont('helvetica','normal');doc.setFontSize(7.5);doc.setTextColor(...GRAY);doc.text(label,x,yy);doc.setFont('helvetica','bold');doc.setFontSize(9);doc.setTextColor(10,10,40);doc.text(String(value||'—'),x,yy+5);doc.setDrawColor(180,190,210);doc.setLineWidth(.2);doc.line(x,yy+6,x+w,yy+6);};
+    y=drawSec('DATOS DEL EX EMPLEADO',y);y+=4;
+    const c1=ML,c2=ML+60,c3=ML+120,fw=52;
+    drawF('Nombre y Apellido',r.nombre,c1,y,158);y+=13;
+    drawF('Cédula de Identidad',r.cedula||'—',c1,y,fw);drawF('NSS',emp?.nss||'—',c2,y,fw);drawF('ARS',(emp?.ars||'—').substring(0,20),c3,y,fw);y+=13;
+    drawF('Fecha de Ingreso (Empresa/TSS)',r.fechaIni,c1,y,fw);drawF('Fecha de Salida (Empresa/TSS)',r.fechaFin,c2,y,fw);drawF('Cargo',emp?.position||'—',c3,y,fw);y+=13;
+    drawF('Salario Mensual',fmt2(r.salMensual),c1,y,fw);drawF('Sal. Diario',fmt2(r.salDiario||0),c2,y,fw);drawF('Motivo',r.tipo==='despido'?'Desahucio (Art.75)':r.tipo==='renuncia'?'Renuncia Voluntaria':r.tipo==='despido_just'?'Despido Justificado':'Mutuo Acuerdo',c3,y,fw);y+=16;
+    y=drawSec('TIEMPO LABORADO Y PROPORCIÓN SALARIAL',y);y+=4;
+    drawF('Tiempo Total Laborado',r.tiempoStr,c1,y,130);y+=13;
+    const finDate=new Date((r.fechaFinISO||r.fechaFin)+'T12:00:00');
+    const diasM=finDate.getDate();const pagDia=r.salMensual/30;const propSal=pagDia*diasM;
+    drawF('Días Trabajados Último Mes',diasM+' días',c1,y,fw);drawF('Pago por Día (Sal÷30)',fmt2(pagDia),c2,y,fw);drawF('Total Proporción Salarial',fmt2(propSal),c3,y,fw);y+=16;
+    y=drawSec('PRESTACIONES LABORALES — Código de Trabajo RD (Ley 16-92)',y);y+=4;
+    const tblX=ML,tblW=CW;const cxW=[tblW*0.36,tblW*0.16,tblW*0.16,tblW*0.32];const cxX=[tblX,tblX+cxW[0],tblX+cxW[0]+cxW[1],tblX+cxW[0]+cxW[1]+cxW[2]];
+    doc.setFillColor(...NAVY);doc.rect(tblX,y,tblW,6.5,'F');doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(...WHITE);
+    ['Concepto','¿Aplica?','Días','Monto (RD$)'].forEach((h,i)=>doc.text(h,cxX[i]+2,y+4.5));y+=6.5;
+    const pRows=[['Preaviso (Art. 76 C.T.)',r.pravisoDias>0,r.pravisoDias,r.preaviso],['Cesantía (Art. 80 C.T.)',r.cesantiaDias>0,r.cesantiaDias,r.cesantia],['Vacaciones (Art. 177)',r.vacDias>0,r.vacDias,r.vacaciones],['Salario de Navidad (Art. 219)',r.navidad>0,'—',r.navidad]];
+    pRows.forEach(([con,apl,dias,monto],i)=>{if(i%2===0){doc.setFillColor(248,250,255);doc.rect(tblX,y,tblW,7,'F');}doc.setDrawColor(210,218,235);doc.setLineWidth(.15);doc.rect(tblX,y,tblW,7);doc.setFont('helvetica','normal');doc.setFontSize(8.5);doc.setTextColor(20,30,60);doc.text(con,cxX[0]+2,y+4.5);doc.setFont('helvetica','bold');doc.setTextColor(apl?[22,163,74]:[180,50,50]);doc.text(apl?'✓ SÍ':'✗ NO',cxX[1]+2,y+4.5);doc.setTextColor(20,30,60);doc.text(String(dias),cxX[2]+2,y+4.5);doc.setTextColor(apl?[0,80,0]:[100,100,100]);doc.text(fmt2(monto),cxX[3]+tblW*0.32-2,y+4.5,{align:'right'});y+=7;});
+    doc.setFillColor(230,236,248);doc.rect(tblX,y,tblW,7,'F');doc.setFont('helvetica','bold');doc.setFontSize(8.5);doc.setTextColor(...NAVY);doc.text('SUBTOTAL',cxX[0]+2,y+4.5);doc.text(fmt2(r.subTotal),cxX[3]+tblW*0.32-2,y+4.5,{align:'right'});y+=10;
+    doc.setFillColor(22,163,74);doc.roundedRect(ML,y,CW,12,3,3,'F');doc.setFont('helvetica','bold');doc.setFontSize(12);doc.setTextColor(...WHITE);doc.text('TOTAL A PAGAR AL EX EMPLEADO:',ML+4,y+8);doc.text(fmt2(r.total),W-ML-2,y+8,{align:'right'});y+=18;
+    y=drawSec('DATOS ADMINISTRATIVOS',y);y+=6;
+    const bw=(CW-10)/2;doc.setDrawColor(180,190,210);doc.setLineWidth(.25);doc.rect(ML,y,bw,14);doc.rect(ML+bw+10,y,bw,14);
+    doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(...GRAY);doc.text('Número de Cheque / Transferencia',ML+2,y+4);doc.text('Banco',ML+bw+12,y+4);doc.setFontSize(8);doc.setTextColor(10,10,40);doc.text(emp?.account?`Cta: ${emp.account}`:'___________________________',ML+2,y+11);doc.text(emp?.bank||'___________________________',ML+bw+12,y+11);y+=20;
+    const sgY=y+12;const sgW=CW/3;
+    [['Firma del Ex Empleado','Descargo recibido: □ SÍ □ NO'],['Autoriza RR.HH.','Representante de la Empresa'],['Contabilidad / Tesorería','Verificado y pagado']].forEach(([lbl,sub],i)=>{const sx=ML+i*sgW+(i>0?2:0);const sw=sgW-6;doc.setDrawColor(100,110,130);doc.setLineWidth(.3);doc.line(sx,sgY,sx+sw,sgY);doc.setFont('helvetica','bold');doc.setFontSize(8);doc.setTextColor(0);doc.text(lbl,sx,sgY+4);doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(85,85,85);doc.text(sub,sx,sgY+8);});
+    const pH=doc.internal.pageSize.getHeight();doc.setFont('helvetica','normal');doc.setFontSize(7);doc.setTextColor(140);doc.text(`Formulario generado automáticamente  ·  RNC: 131-07998-9  ·  ${today2}`,W/2,pH-7,{align:'center'});
+    // Marca de agua
+    doc.setFont('helvetica','bold');doc.setFontSize(52);doc.setTextColor(225,230,245);
+    doc.text('COPIA RRHH',W/2,160,{align:'center',angle:35});
+    return doc;
   }
 
   function descargarPDF() {
@@ -3994,7 +4831,15 @@ function Prestaciones({ employees, saveEmployee, setEmployees }) {
           style={{background:'#7C3AED',color:'white',border:'none',borderRadius:8,
             padding:'8px 18px',cursor:'pointer',fontWeight:700,fontSize:13,
             display:'flex',alignItems:'center',gap:6}}>
-            📋 Ficha Salida TSS (RRHH)
+            📦 Descargar Expediente Completo (ZIP)
+          </button>
+        )}
+        {resultado && (
+          <button onClick={() => setShowDescargo(true)}
+            style={{background:'#0891B2',color:'white',border:'none',borderRadius:8,
+              padding:'8px 18px',cursor:'pointer',fontWeight:700,fontSize:13,
+              display:'flex',alignItems:'center',gap:6}}>
+            ⚖️ Descargo y Finiquito Legal
           </button>
         )}
         {/* Botón para registrar salida definitiva */}
@@ -4029,6 +4874,8 @@ function Prestaciones({ employees, saveEmployee, setEmployees }) {
               if (saveEmployee) await saveEmployee(updated);
               if (setEmployees) setEmployees(prev => prev.map(e => String(e.id) === resultado.empId ? updated : e));
               generateFichaSalidaPDF({...resultado, fechaFinISO: resultado.fechaFinISO||new Date().toISOString().substring(0,10)}, emp);
+              // También mostrar modal de descargo
+              setShowDescargo(true);
               alert(`\u2705 ${resultado.nombre} registrado como retirado.\n\n\ud83d\udcc4 La Ficha de Salida TSS (RRHH) se descarg\u00f3 autom\u00e1ticamente.`);
             }}
             style={{background:'#DC2626',color:'white',border:'none',borderRadius:8,
@@ -4039,6 +4886,173 @@ function Prestaciones({ employees, saveEmployee, setEmployees }) {
           );
         })()}
       </div>
+
+      {/* ── MODAL DESCARGO Y FINIQUITO ── */}
+      {showDescargo && resultado && (
+        <div style={{position:'fixed',inset:0,background:'rgba(0,0,0,.6)',zIndex:9999,
+          display:'flex',alignItems:'center',justifyContent:'center',padding:20,overflowY:'auto'}}>
+          <div style={{background:'white',borderRadius:16,padding:'28px 26px',maxWidth:540,
+            width:'100%',boxShadow:'0 24px 64px rgba(0,0,0,.35)',maxHeight:'90vh',overflowY:'auto'}}>
+            <div style={{fontFamily:'Montserrat',fontWeight:800,fontSize:18,color:'#003366',marginBottom:4}}>
+              ⚖️ Descargo y Finiquito Legal
+            </div>
+            <div style={{fontSize:13,color:'#5A7090',marginBottom:20}}>
+              Complete los datos faltantes para generar el documento notarial.
+            </div>
+
+            {/* Datos auto-llenados (readonly) */}
+            <div style={{background:'#F0F6FF',borderRadius:10,padding:'12px 14px',marginBottom:16,fontSize:12}}>
+              <div style={{fontWeight:700,color:'#1E40AF',marginBottom:8}}>📋 Datos del empleado (auto-cargados)</div>
+              <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'4px 12px',color:'#374151'}}>
+                {[['Empleado',resultado.nombre],['Cédula',resultado.cedula],
+                  ['Total a pagar',`RD$${resultado.total?.toLocaleString('es-DO',{minimumFractionDigits:2})}`],
+                  ['Fecha de salida',resultado.fechaFin]].map(([l,v])=>(
+                  <div key={l}><span style={{color:'#6B7280'}}>{l}:</span> <strong>{v}</strong></div>
+                ))}
+              </div>
+            </div>
+
+            {/* Campos a completar */}
+            {[
+              ['🏙️ Ciudad donde se firma', 'ciudad', 'Santo Domingo', 'text'],
+              ['📅 Fecha de firma (YYYY-MM-DD)', 'fechaFirma', new Date().toISOString().substring(0,10), 'date'],
+              ['👨‍⚖️ Nombre del Abogado Notario', 'notario', 'Ej: Lic. Juan Pérez García', 'text'],
+            ].map(([label, key, placeholder, type]) => (
+              <div key={key} style={{marginBottom:14}}>
+                <label style={{fontSize:12,fontWeight:700,color:'#003366',display:'block',marginBottom:5}}>{label}</label>
+                <input type={type} value={descargoData[key]||''} placeholder={placeholder}
+                  onChange={e => setDescargoData(d=>({...d,[key]:e.target.value}))}
+                  style={{width:'100%',padding:'9px 12px',border:'1.5px solid #D0DCF0',
+                    borderRadius:8,fontSize:14,boxSizing:'border-box'}}/>
+              </div>
+            ))}
+
+            <div style={{marginBottom:18}}>
+              <label style={{fontSize:12,fontWeight:700,color:'#003366',display:'block',marginBottom:5}}>
+                💳 Forma de pago
+              </label>
+              <select value={descargoData.formaPago||'Transferencia bancaria'}
+                onChange={e => setDescargoData(d=>({...d,formaPago:e.target.value}))}
+                style={{width:'100%',padding:'9px 12px',border:'1.5px solid #D0DCF0',
+                  borderRadius:8,fontSize:14}}>
+                {['Transferencia bancaria','Cheque','Efectivo','Depósito bancario'].map(op=>(
+                  <option key={op}>{op}</option>
+                ))}
+              </select>
+            </div>
+
+            {/* Si falta dirección del empleado, pedirla */}
+            {(() => {
+              const emp = employees.find(e => String(e.id) === resultado.empId);
+              if (emp && !emp.direccion) return (
+                <div style={{marginBottom:14}}>
+                  <label style={{fontSize:12,fontWeight:700,color:'#DC2626',display:'block',marginBottom:5}}>
+                    📍 Dirección del empleado (no registrada — requerida para el documento)
+                  </label>
+                  <input type="text" placeholder="Calle, No., Sector, Ciudad"
+                    value={descargoData.direccionManual||''}
+                    onChange={e => setDescargoData(d=>({...d,direccionManual:e.target.value}))}
+                    style={{width:'100%',padding:'9px 12px',border:'1.5px solid #FECACA',
+                      borderRadius:8,fontSize:14,boxSizing:'border-box'}}/>
+                </div>
+              );
+            })()}
+
+            <div style={{background:'#FFF7ED',border:'1px solid #FED7AA',borderRadius:8,
+              padding:'10px 14px',marginBottom:18,fontSize:12,color:'#92400E'}}>
+              ⚠️ Este documento tiene valor legal. Asegúrate de que el notario verifique y firme el original.
+            </div>
+
+            <div style={{display:'flex',gap:10,justifyContent:'flex-end'}}>
+              <button onClick={()=>setShowDescargo(false)}
+                style={{padding:'10px 20px',borderRadius:8,border:'1.5px solid #E2E8F0',
+                  background:'white',color:'#5A7090',fontWeight:700,cursor:'pointer',fontSize:13}}>
+                Cancelar
+              </button>
+              <button onClick={()=>{
+                const emp = employees.find(e => String(e.id) === resultado.empId);
+                const empConDir = emp && !emp.direccion && descargoData.direccionManual
+                  ? {...emp, direccion: descargoData.direccionManual}
+                  : emp;
+                generateDescargoPDF(resultado, empConDir, descargoData);
+                setShowDescargo(false);
+              }}
+              style={{padding:'10px 20px',borderRadius:8,background:'#0891B2',color:'white',
+                fontWeight:700,cursor:'pointer',border:'none',fontSize:13}}>
+                📄 Generar PDF Descargo
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ═══ PANEL EXPEDIENTE DE SALIDA ═══ */}
+      {resultado && (
+        <div style={{background:'linear-gradient(135deg,#001a3e,#003366)',borderRadius:14,
+          padding:'20px 24px',marginBottom:20,color:'white'}}>
+          <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:16}}>
+            <div style={{fontSize:28}}>📁</div>
+            <div>
+              <div style={{fontFamily:'Montserrat',fontWeight:800,fontSize:16,letterSpacing:.5}}>
+                Expediente de Salida — {resultado.nombre}
+              </div>
+              <div style={{fontSize:12,opacity:.7,marginTop:2}}>
+                5 documentos oficiales · Generados automáticamente · {resultado.fechaFin}
+              </div>
+            </div>
+          </div>
+
+          {/* Grid de documentos individuales */}
+          <div style={{display:'grid',gridTemplateColumns:'repeat(5,1fr)',gap:8,marginBottom:16}}>
+            {[
+              {icon:'📊', label:'Cálculo
+Prestaciones', color:'#1D4ED8', fn:()=>descargarPDF(), file:'calculo_prestaciones.pdf'},
+              {icon:'🏛️', label:'Ficha
+Salida TSS', color:'#7C3AED', fn:()=>{const e=employees.find(x=>String(x.id)===resultado.empId);generateFichaSalidaPDF({...resultado,fechaFinISO:resultado.fechaFinISO||resultado.fechaFin},e);}, file:'salida_tss.pdf'},
+              {icon:'🧾', label:'Recibo
+de Pago', color:'#059669', fn:()=>{const e=employees.find(x=>String(x.id)===resultado.empId);generarReciboPago(resultado,e);}, file:'recibo_pago.pdf'},
+              {icon:'✍️', label:'Descargo
+Laboral', color:'#0891B2', fn:()=>{const e=employees.find(x=>String(x.id)===resultado.empId);generarDescargoLaboral(resultado,e);}, file:'descargo_laboral.pdf'},
+              {icon:'📜', label:'Carta
+Terminación', color:'#DC2626', fn:()=>{const e=employees.find(x=>String(x.id)===resultado.empId);generarCartaTerminacion(resultado,e);}, file:'carta_terminacion.pdf'},
+            ].map((doc,i)=>(
+              <button key={i} onClick={doc.fn}
+                style={{background:'rgba(255,255,255,.1)',border:'1px solid rgba(255,255,255,.2)',
+                  borderRadius:10,padding:'12px 6px',cursor:'pointer',textAlign:'center',
+                  transition:'all .2s',color:'white',fontFamily:'inherit'}}>
+                <div style={{fontSize:22,marginBottom:6}}>{doc.icon}</div>
+                <div style={{fontSize:10,fontWeight:700,lineHeight:1.4,whiteSpace:'pre-line',
+                  color:'rgba(255,255,255,.9)'}}>{doc.label}</div>
+                <div style={{fontSize:9,color:'rgba(255,255,255,.5)',marginTop:4}}>{doc.file}</div>
+              </button>
+            ))}
+          </div>
+
+          {/* Botón estrella: Expediente Completo */}
+          <button onClick={async()=>{
+            const e=employees.find(x=>String(x.id)===resultado.empId);
+            await generarExpedienteCompleto(resultado,e);
+          }}
+          style={{width:'100%',padding:'14px',background:'linear-gradient(135deg,#E8A020,#D4911A)',
+            border:'none',borderRadius:10,color:'white',fontWeight:800,fontSize:15,
+            cursor:'pointer',display:'flex',alignItems:'center',justifyContent:'center',gap:10,
+            boxShadow:'0 4px 16px rgba(232,160,32,.4)',fontFamily:'Montserrat,sans-serif'}}>
+            📦 Generar Expediente Completo (5 documentos)
+            <span style={{fontSize:12,fontWeight:600,opacity:.85}}>· calculo · tss · recibo · descargo · carta</span>
+          </button>
+
+          {/* Info estructura de carpetas */}
+          <div style={{marginTop:12,padding:'10px 14px',background:'rgba(0,0,0,.25)',
+            borderRadius:8,fontFamily:'monospace',fontSize:11,color:'rgba(255,255,255,.65)',lineHeight:1.8}}>
+            📂 empleados/salida/<strong style={{color:'#E8A020'}}>{(resultado.nombre||'').replace(/\s+/g,'_').toLowerCase()}/</strong><br/>
+            &nbsp;&nbsp;├── calculo_prestaciones.pdf<br/>
+            &nbsp;&nbsp;├── salida_tss.pdf<br/>
+            &nbsp;&nbsp;├── recibo_pago.pdf<br/>
+            &nbsp;&nbsp;├── descargo_laboral.pdf<br/>
+            &nbsp;&nbsp;└── carta_terminacion.pdf
+          </div>
+        </div>
+      )}
 
       {/* Documento estilo Ministerio de Trabajo */}
       <div style={{background:'white',borderRadius:16,boxShadow:'0 4px 24px rgba(0,51,102,.12)',overflow:'hidden'}}>
