@@ -607,7 +607,7 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
         {view === "nomina" && <Nomina employees={employees} periods={periods} setPeriods={setPeriods} savePeriod={savePeriod} deletePeriod={async(pid)=>{ await fbDB.collection("periods").doc(String(pid)).delete(); setPeriods(p=>p.filter(x=>x.periodId!==pid)); }} showToast={showToast} showNew={showNewPeriod} setShowNew={setShowNewPeriod} selectedPeriod={selectedPeriod} setSelectedPeriod={setSelectedPeriod} viewPayslip={viewPayslip} setViewPayslip={setViewPayslip} />}
         {view === "reportes" && <Reportes employees={employees} periods={periods} deletePeriod={async(pid)=>{ await fbDB.collection("periods").doc(String(pid)).delete(); setPeriods(p=>p.filter(x=>x.periodId!==pid)); }} />}
         {view === "formularios" && <Formularios employees={employees} periods={periods} />}
-        {view === "prestaciones" && <Prestaciones employees={employees} />}
+        {view === "prestaciones" && <Prestaciones employees={employees} saveEmployee={saveEmployee} setEmployees={setEmployees} />}
         {view === "navidad" && <SalarioNavidad employees={employees} />}
         {view === "bonificacion" && <Bonificacion employees={employees} />}
         {view === "vacaciones" && <Vacaciones employees={employees} />}
@@ -629,8 +629,8 @@ function App({ savedEmployees, savedPeriods, setEmployees: setEmployeesProp, set
 }
 
 function Dashboard({ employees, reminders, periods, setView }) {
-  const totalNeto = employees.reduce((s,e) => s + calcPayroll(e,[],[]).totalAPagar, 0);
-  const totalCosto = employees.reduce((s,e) => s + calcPayroll(e,[],[]).costEmpresa, 0);
+  const totalNeto = employees.filter(e=>!e.exitDate).reduce((s,e) => s + calcPayroll(e,[],[]).totalAPagar, 0);
+  const totalCosto = employees.filter(e=>!e.exitDate).reduce((s,e) => s + calcPayroll(e,[],[]).costEmpresa, 0);
   return (
     <>
       <div className="fjb mb3">
@@ -722,7 +722,7 @@ function Employees({ employees, setEmployees, editEmp, setEditEmp, showNew, setS
   const filtered = employees.filter(e => e.name.toLowerCase().includes(search.toLowerCase()) || e.cedula.includes(search) || e.position.toLowerCase().includes(search.toLowerCase()));
   return (
     <>
-      <div className="fjb mb3"><div><div className="pt">Empleados</div><div className="ps">Gestiona tu equipo · {employees.length} / 40</div></div><button className="btn bp1" onClick={() => setShowNew(true)}>+ Nuevo Empleado</button>
+      <div className="fjb mb3"><div><div className="pt">Empleados</div><div className="ps">Gestiona tu equipo · {employees.filter(e=>!e.exitDate).length} activos / {employees.filter(e=>e.exitDate).length > 0 ? employees.filter(e=>e.exitDate).length + " retirados · " : ""}40 máx.</div></div><button className="btn bp1" onClick={() => setShowNew(true)}>+ Nuevo Empleado</button>
             <button onClick={() => exportarExcelDGT3(employees)} style={{marginLeft:8,padding:"8px 16px",background:"#1A6B3A",color:"white",border:"none",borderRadius:10,fontWeight:700,cursor:"pointer",fontSize:13}}>⬇️ Exportar DGT-3 Excel</button></div>
       <div className="card">
         <div className="fjb mb3"><input className="fi" style={{width:300}} placeholder="🔍 Buscar por nombre, cédula o cargo..." value={search} onChange={e => setSearch(e.target.value)} /><span className="tm">{filtered.length} resultado{filtered.length!==1?"s":""}</span></div>
@@ -742,7 +742,12 @@ function Employees({ employees, setEmployees, editEmp, setEditEmp, showNew, setS
                     <td><span className="badge bb">{emp.position}</span></td>
                     <td className="tb">{fmt(emp.salary)}</td>
                     <td>{fmtDate(emp.hireDate)}</td>
-                    <td>{yrs} año{yrs!==1?"s":""}</td>
+                    <td>
+                      {emp.exitDate
+                        ? <span className="badge" style={{background:"#FEF2F2",color:"#DC2626",fontWeight:700,fontSize:11}}>🚪 Retirado {fmtDate(emp.exitDate)}</span>
+                        : <span>{yrs} año{yrs!==1?"s":""}</span>
+                      }
+                    </td>
                     <td><span className="badge bg">{vacationDays(emp.hireDate)} días</span></td>
                     <td><span className="badge" style={{background:"#EFF6FF",color:"#1D4ED8",fontWeight:600,fontSize:11,padding:"2px 8px",borderRadius:12}}>{emp.ars ? arsShort : "—"}</span></td>
                     <td style={{textAlign:"center"}}>{ndeps > 0 ? <span className="badge" style={{background:"#F0FDF4",color:"#15803D",fontWeight:700,fontSize:12,padding:"2px 9px",borderRadius:12}}>👨‍👩‍👧 {ndeps}</span> : <span className="tm">—</span>}</td>
@@ -1111,7 +1116,7 @@ function Nomina({ employees, periods, setPeriods, savePeriod, deletePeriod, show
     setExcluded(autoExclude);
   }, [periodId]);
 
-  const allRows = employees.map(e => { const d = getEmpData(e.id); return { emp: e, calc: calcPayroll(e, d.incomes||[], d.deductions||[]), extras: d }; });
+  const allRows = employees.filter(e => !e.exitDate).map(e => { const d = getEmpData(e.id); return { emp: e, calc: calcPayroll(e, d.incomes||[], d.deductions||[]), extras: d }; });
   const rows = allRows.filter(r => !excluded.has(String(r.emp.id)));
   const totals = rows.reduce((s,r) => ({ b:s.b+r.calc.periodSalary, n:s.n+r.calc.totalAPagar, d:s.d+r.calc.totalDeductions, c:s.c+r.calc.costEmpresa }), { b:0,n:0,d:0,c:0 });
 
@@ -3309,27 +3314,34 @@ function Formularios({ employees, periods }) {
 // ═══════════════════════════════════════════════════════════════════════════
 //  CALCULADORA DE PRESTACIONES LABORALES (Ley 16-92 / Código de Trabajo RD)
 // ═══════════════════════════════════════════════════════════════════════════
-function Prestaciones({ employees }) {
+function Prestaciones({ employees, saveEmployee, setEmployees }) {
   const [step, setStep]         = useState(1); // 1=datos, 2=resultado
   const [empId, setEmpId]       = useState('');
+  const [empSel, setEmpSel]     = useState(null); // empleado seleccionado completo
   const [nombre, setNombre]     = useState('');
   const [cedula, setCedula]     = useState('');
   const [salario, setSalario]   = useState('');
   const [tipo, setTipo]         = useState('despido'); // despido | renuncia | mutuo
   const [fechaIni, setFechaIni] = useState('');
-  const [fechaFin, setFechaFin] = useState('');
+  const [fechaFin, setFechaFin] = useState(new Date().toISOString().substring(0,10));
   const [vacPend, setVacPend]   = useState('0');
   const [incNavidad, setIncNav] = useState(true);
   const [resultado, setResult]  = useState(null);
 
-  // Al seleccionar empleado del listado
+  // Al seleccionar empleado del listado — auto-llena TODOS los datos
   function onSelectEmp(id) {
     setEmpId(id);
     const emp = employees.find(e => String(e.id) === id);
-    if (!emp) return;
+    if (!emp) { setEmpSel(null); return; }
+    setEmpSel(emp);
     setNombre(emp.name || '');
     setCedula(emp.cedula || '');
     setSalario(String(emp.salary || ''));
+    // Auto-llenar fecha de ingreso
+    if (emp.hireDate) setFechaIni(emp.hireDate);
+    // Auto-calcular días de vacaciones según antigüedad
+    const vacDias = vacationDays(emp.hireDate);
+    setVacPend(String(vacDias));
   }
 
   function rd(n) { return 'RD$' + Number(n).toLocaleString('es-DO', {minimumFractionDigits:2,maximumFractionDigits:2}); }
@@ -3394,9 +3406,10 @@ function Prestaciones({ employees }) {
     const total     = subTotal + navidad;
 
     setResult({
-      nombre, cedula,
+      empId, nombre, cedula,
       fechaIni: ini.toLocaleDateString('es-DO',{day:'2-digit',month:'2-digit',year:'numeric'}),
       fechaFin: fin.toLocaleDateString('es-DO',{day:'2-digit',month:'2-digit',year:'numeric'}),
+      fechaFinISO: fechaFin,
       tiempoStr,
       salMensual: sal,
       salDiario: diario,
@@ -3411,89 +3424,412 @@ function Prestaciones({ employees }) {
     setStep(2);
   }
 
-  function descargarPDF() {
-    const r = resultado;
+  
+  // ── Generar Ficha de Salida TSS (PDF automático al desvincular) ─────────────
+  function generateFichaSalidaPDF(r, emp) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit:'mm', format:'a4' });
-    const W = 210, M = 25;
-    let y = 20;
+    const W = 210, M = 18;
+    let y = 14;
+    const NAVY = [0,51,102], GOLD = [232,160,32], WHITE = [255,255,255], GRAY = [80,90,110];
+    const fmt2 = v => (parseFloat(v)||0).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const today2 = new Date().toLocaleDateString('es-DO',{day:'2-digit',month:'2-digit',year:'numeric'});
 
-    // Logo si existe
-    try { doc.addImage(LOGO_TEA, 'PNG', W/2-15, y, 30, 14, undefined, 'FAST'); y += 18; } catch(e) { y += 4; }
+    // ── ENCABEZADO ──────────────────────────────────────────────────────────
+    // Franja azul superior
+    doc.setFillColor(...NAVY); doc.rect(0, 0, W, 38, 'F');
+    // Logo
+    try { doc.addImage(LOGO_TEA,'PNG', M, 7, 22, 11); } catch(e){}
+    // Empresa
+    doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...WHITE);
+    doc.text('TRANSPORTE EMPRESARIAL AMALFI, S.R.L.', W/2, 14, {align:'center'});
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(180,200,230);
+    doc.text('RNC: 1-31-07998-9  ·  Departamento de Recursos Humanos', W/2, 20, {align:'center'});
+    // Título del formulario
+    doc.setFillColor(...GOLD); doc.roundedRect(M, 24, W-2*M, 10, 2, 2, 'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(...NAVY);
+    doc.text('FORMULARIO DE SALIDA EN LA TSS', W/2, 30.5, {align:'center'});
 
-    doc.setFont('helvetica','bold');
-    doc.setFontSize(16); doc.setTextColor(0,34,102);
-    doc.text('República Dominicana', W/2, y, {align:'center'}); y += 7;
-    doc.setFontSize(12); doc.text('TRANSPORTE EMPRESARIAL AMALFI', W/2, y, {align:'center'}); y += 5;
-    doc.setFontSize(10); doc.setFont('helvetica','normal'); doc.setTextColor(80,80,80);
-    doc.text('Cálculo de Prestaciones Laborales y Derechos Adquiridos', W/2, y, {align:'center'}); y += 10;
+    y = 46;
 
-    // Línea
-    doc.setDrawColor(0,34,102); doc.setLineWidth(0.5);
-    doc.line(M, y, W-M, y); y += 6;
+    // Fecha en esquina derecha
+    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(...GRAY);
+    doc.text(`Fecha del formulario: ${today2}`, W-M, y, {align:'right'});
+    y += 6;
 
-    // Datos
-    doc.setFontSize(10); doc.setTextColor(0,0,0);
-    const col1 = M, col2 = W/2+5;
-    const filas = [
-      ['Cédula:', r.cedula || '—', 'Tipo de Terminación:', r.tipo === 'despido' ? 'Desahucio (despido s/causa)' : r.tipo === 'despido_just' ? 'Despido Justificado (Art. 88)' : r.tipo === 'renuncia' ? 'Renuncia Voluntaria' : 'Mutuo Acuerdo'],
-      ['Nombre:', r.nombre, 'Fecha de Ingreso:', r.fechaIni],
-      ['Empleador:', 'TRANSPORTE EMPRESARIAL AMALFI', 'Fecha de Salida:', r.fechaFin],
-      ['Tiempo Laborado:', r.tiempoStr, 'Salario Mensual:', 'RD$' + r.salMensual.toLocaleString('es-DO',{minimumFractionDigits:2})],
-      ['Sal. Promedio Diario:', 'RD$' + r.salDiario.toFixed(2), '', ''],
-    ];
-    filas.forEach(([l1,v1,l2,v2]) => {
-      doc.setFont('helvetica','bold'); doc.text(l1, col1, y);
-      doc.setFont('helvetica','normal'); doc.text(v1, col1+38, y);
-      if (l2) { doc.setFont('helvetica','bold'); doc.text(l2, col2, y); }
-      if (v2) { doc.setFont('helvetica','normal'); doc.text(v2, col2+38, y); }
-      y += 6;
-    });
+    // ── SECCIÓN: DATOS DEL EX EMPLEADO ─────────────────────────────────────
+    const drawSectionTitle = (title, yPos) => {
+      doc.setFillColor(230, 236, 248);
+      doc.rect(M, yPos, W-2*M, 7, 'F');
+      doc.setDrawColor(0,51,102); doc.setLineWidth(.3);
+      doc.rect(M, yPos, W-2*M, 7);
+      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(...NAVY);
+      doc.text(title, M+3, yPos+5);
+      return yPos+7;
+    };
 
-    y += 3; doc.line(M, y, W-M, y); y += 7;
+    const drawField = (label, value, x, yPos, w) => {
+      doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...GRAY);
+      doc.text(label, x, yPos);
+      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(10,10,40);
+      doc.text(String(value||'—'), x, yPos+5);
+      doc.setDrawColor(180,190,210); doc.setLineWidth(.2);
+      doc.line(x, yPos+6, x+w, yPos+6);
+      return yPos;
+    };
 
-    doc.setFont('helvetica','bold'); doc.setFontSize(13); doc.setTextColor(0,34,102);
-    doc.text('Prestaciones Laborales y Derechos Adquiridos', W/2, y, {align:'center'}); y += 10;
+    y = drawSectionTitle('DATOS DEL EX EMPLEADO', y);
+    y += 4;
 
-    doc.setFontSize(10); doc.setTextColor(0,0,0);
-    const items = [
-      [`Salario Preaviso (art. 76 C.T.) — ${r.pravisoDias} días:`, r.preaviso],
-      [`Auxilio de Cesantía (art. 80 C.T.) — ${r.cesantiaDias} días:`, r.cesantia],
-      [`Vacaciones No Disfrutadas (art. 177 C.T.) — ${r.vacDias} días:`, r.vacaciones],
-    ];
-    items.forEach(([label, monto]) => {
-      doc.setFont('helvetica','bold'); doc.text(label, W/2, y, {align:'center'});
-      doc.setFont('helvetica','normal');
-      doc.text('RD$' + monto.toLocaleString('es-DO',{minimumFractionDigits:2}), W/2, y+5, {align:'center'});
-      y += 12;
-    });
+    const col1 = M, col2 = M+60, col3 = M+120;
+    const fw = 54; // field width
 
-    y += 3; doc.line(M+20, y, W-M-20, y); y += 6;
-    doc.setFont('helvetica','bold'); doc.setFontSize(11);
-    doc.text('SubTotal a Recibir: RD$' + r.subTotal.toLocaleString('es-DO',{minimumFractionDigits:2}), W/2, y, {align:'center'});
-    y += 8;
-    doc.setFont('helvetica','normal'); doc.setFontSize(10);
-    doc.text(`Salario Navidad (art. 219 C.T.): RD$${r.navidad.toLocaleString('es-DO',{minimumFractionDigits:2})}`, W/2, y, {align:'center'});
-    y += 10;
-
-    doc.line(M+10, y, W-M-10, y); y += 6;
-    doc.setFont('helvetica','bold'); doc.setFontSize(16); doc.setTextColor(0,34,102);
-    doc.text('Total a Recibir: RD$' + r.total.toLocaleString('es-DO',{minimumFractionDigits:2}), W/2, y, {align:'center'});
+    drawField('Nombre y Apellido', r.nombre, col1, y, 160);
     y += 14;
 
-    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(100,100,100);
-    const nota = 'NOTA: ESTOS CÁLCULOS HAN SIDO REALIZADOS EN BASE A LAS INFORMACIONES SUMINISTRADAS. POR TANTO, LOS MISMOS NO SE IMPONEN A LA PARTE CONTRARIA NI AL JUEZ DE TRABAJO.';
-    doc.text(nota, M, y, {maxWidth: W-2*M}); y += 10;
+    drawField('Número de Cédula', r.cedula, col1, y, fw);
+    drawField('NSS', emp?.nss||'—', col2, y, fw);
+    drawField('ARS', (emp?.ars||'—').replace('SEGURO NACIONAL DE SALUD (SENASA) - REGIMEN CONTRIBUTIVO','SENASA').substring(0,22), col3, y, fw);
+    y += 14;
 
-    doc.line(M, y, W/2-10, y); doc.line(W/2+10, y, W-M, y); y += 5;
-    doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(0,0,0);
-    doc.text('Representante RRHH', M, y);
-    doc.text('Trabajador(a)', W-M, y, {align:'right'});
+    drawField('Fecha de Ingreso (Empresa / TSS)', r.fechaIni, col1, y, fw);
+    drawField('Fecha de Salida (Empresa / TSS)', r.fechaFin, col2, y, fw);
+    drawField('Cargo / Posición', emp?.position||'—', col3, y, fw);
+    y += 14;
 
-    doc.setFontSize(7); doc.setTextColor(130,130,130);
-    doc.text(`Emitido: ${r.fecha} · Transporte Empresarial Amalfi · RNC: 131-07998-9`, W/2, 285, {align:'center'});
+    drawField('Salario Mensual', 'RD$'+fmt2(r.salMensual), col1, y, fw);
+    drawField('Salario Diario (÷23.83)', 'RD$'+fmt2(r.salDiario), col2, y, fw);
+    drawField('Motivo de Salida', r.tipo==='despido'?'Desahucio (Art.75)':r.tipo==='renuncia'?'Renuncia Voluntaria':r.tipo==='despido_just'?'Despido Justificado (Art.88)':'Mutuo Acuerdo', col3, y, fw);
+    y += 16;
 
-    doc.save(`Prestaciones_${r.nombre.replace(/ /g,'_')}.pdf`);
+    // ── SECCIÓN: TIEMPO Y PROPORCIÓN SALARIAL ──────────────────────────────
+    y = drawSectionTitle('TIEMPO LABORADO Y PROPORCIÓN DE SALARIO DEL MES', y);
+    y += 4;
+
+    drawField('Tiempo Total Laborado', r.tiempoStr, col1, y, 130);
+    y += 14;
+
+    // Calcular días trabajados en el último mes
+    const finDate = new Date((r.fechaFinISO||r.fechaFin)+'T12:00:00');
+    const diasMes = finDate.getDate(); // días trabajados hasta la salida
+    const pagoDia = r.salMensual / 30;
+    const propSalario = pagoDia * diasMes;
+
+    drawField('Días Trabajados en el Último Mes', String(diasMes) + ' días', col1, y, fw);
+    drawField('Pago por Día (Salario÷30)', 'RD$'+fmt2(pagoDia), col2, y, fw);
+    drawField('Total Proporción Salarial', 'RD$'+fmt2(propSalario), col3, y, fw);
+    y += 16;
+
+    // ── SECCIÓN: PRESTACIONES LABORALES ────────────────────────────────────
+    y = drawSectionTitle('PRESTACIONES LABORALES (Código de Trabajo RD · Ley 16-92)', y);
+    y += 4;
+
+    // Tabla de prestaciones
+    const tblX = M;
+    const tblW = W - 2*M;
+    const colW = [tblW*0.36, tblW*0.16, tblW*0.16, tblW*0.32];
+    const colX = [tblX, tblX+colW[0], tblX+colW[0]+colW[1], tblX+colW[0]+colW[1]+colW[2]];
+
+    // Header
+    doc.setFillColor(...NAVY); doc.rect(tblX, y, tblW, 6.5, 'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...WHITE);
+    ['Concepto','¿Aplica?','Días','Monto (RD$)'].forEach((h,i) => {
+      doc.text(h, colX[i]+2, y+4.5);
+    });
+    y += 6.5;
+
+    const prestRows = [
+      ['Preaviso (Art. 76 C.T.)', r.pravisoDias > 0, r.pravisoDias, r.preaviso],
+      ['Auxilio de Cesantía (Art. 80 C.T.)', r.cesantiaDias > 0, r.cesantiaDias, r.cesantia],
+      ['Vacaciones No Disfrutadas (Art. 177)', r.vacDias > 0, r.vacDias, r.vacaciones],
+      ['Salario de Navidad (Art. 219 C.T.)', r.navidad > 0, '—', r.navidad],
+    ];
+
+    prestRows.forEach(([concepto, aplica, dias, monto], i) => {
+      if (i%2===0) { doc.setFillColor(248,250,255); doc.rect(tblX, y, tblW, 7, 'F'); }
+      doc.setDrawColor(210,218,235); doc.setLineWidth(.15); doc.rect(tblX, y, tblW, 7);
+      doc.setFont('helvetica','normal'); doc.setFontSize(8.5); doc.setTextColor(20,30,60);
+      doc.text(concepto, colX[0]+2, y+4.5);
+      doc.setFont('helvetica','bold');
+      doc.setTextColor(aplica?[22,163,74]:[180,50,50]);
+      doc.text(aplica ? '✓ SÍ' : '✗ NO', colX[1]+2, y+4.5);
+      doc.setTextColor(20,30,60);
+      doc.text(String(dias), colX[2]+2, y+4.5);
+      doc.setTextColor(aplica?[0,80,0]:[120,120,120]);
+      doc.text('RD$'+fmt2(monto), colX[3]+tblW*0.32-2, y+4.5, {align:'right'});
+      doc.setTextColor(20,30,60);
+      y += 7;
+    });
+
+    // Subtotal
+    doc.setFillColor(230,236,248); doc.rect(tblX, y, tblW, 7, 'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(8.5); doc.setTextColor(...NAVY);
+    doc.text('SUBTOTAL PRESTACIONES', colX[0]+2, y+4.5);
+    doc.text('RD$'+fmt2(r.subTotal), colX[3]+tblW*0.32-2, y+4.5, {align:'right'});
+    y += 10;
+
+    // ── TOTAL A PAGAR ───────────────────────────────────────────────────────
+    doc.setFillColor(22,163,74); doc.roundedRect(M, y, W-2*M, 12, 3, 3, 'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(12); doc.setTextColor(...WHITE);
+    doc.text('TOTAL A PAGAR AL EX EMPLEADO:', M+4, y+8);
+    doc.text('RD$'+fmt2(r.total), W-M-2, y+8, {align:'right'});
+    y += 18;
+
+    // ── DATOS ADMINISTRATIVOS ───────────────────────────────────────────────
+    y = drawSectionTitle('DATOS ADMINISTRATIVOS', y);
+    y += 6;
+
+    // Caja No. Cheque y Banco
+    doc.setDrawColor(180,190,210); doc.setLineWidth(.25);
+    const bw = (W-2*M-10)/2;
+    doc.rect(M, y, bw, 14); doc.rect(M+bw+10, y, bw, 14);
+
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...GRAY);
+    doc.text('Número de Cheque / Transferencia', M+2, y+4);
+    doc.text('Banco', M+bw+12, y+4);
+    doc.setFontSize(8); doc.setTextColor(10,10,40);
+    doc.text(emp?.account ? `Cta: ${emp.account}` : '___________________________', M+2, y+11);
+    doc.text(emp?.bank || '___________________________', M+bw+12, y+11);
+    y += 20;
+
+    // Firmas
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(...GRAY);
+    const sigY = y + 18;
+    const sigW = (W-2*M)/3;
+
+    [
+      ['Firma del Ex Empleado', 'Descargo recibido:  □ SÍ  □ NO'],
+      ['Autoriza RR.HH.', 'Representante de la Empresa'],
+      ['Contabilidad / Tesorería', 'Verificado y pagado'],
+    ].forEach(([label, sub], i) => {
+      const sx = M + i*sigW + (i>0?4:0);
+      doc.setDrawColor(100,110,130); doc.setLineWidth(.3);
+      doc.line(sx, sigY, sx+sigW-8, sigY);
+      doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(...NAVY);
+      doc.text(label, sx, sigY+4);
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(...GRAY);
+      doc.text(sub, sx, sigY+8);
+    });
+
+    y = sigY + 14;
+
+    // ── PIE DE PÁGINA ───────────────────────────────────────────────────────
+    doc.setDrawColor(150,170,200); doc.setLineWidth(.3); doc.line(M, y, W-M, y);
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(140);
+    doc.text('Formulario generado automáticamente por el Sistema de Nómina · Transporte Empresarial Amalfi, S.R.L.', W/2, y+4, {align:'center'});
+    doc.text(`RNC: 131-07998-9  ·  Generado: ${today2}  ·  Ley 16-92 Código de Trabajo R.D.`, W/2, y+8, {align:'center'});
+
+    // MARCA DE AGUA "COPIA RRHH"
+    doc.setFont('helvetica','bold'); doc.setFontSize(52); doc.setTextColor(220,228,245);
+    doc.saveGraphicsState();
+    doc.text('COPIA RRHH', W/2, 160, {align:'center', angle:35});
+    doc.restoreGraphicsState();
+
+    const slug = (r.nombre||'empleado').replace(/\s+/g,'_').toUpperCase();
+    doc.save(`FichaSalida_${slug}_${r.fechaFin.replace(/\//g,'-')}.pdf`);
+  }
+
+  function descargarPDF() {
+    const r = resultado;
+    if (!r) return;
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit:'mm', format:'a4' });
+
+    // ── Constantes de layout ─────────────────────────────────────────────────
+    const W = 210;
+    const ML = 20, MR = 20; // márgenes izquierdo/derecho
+    const CW = W - ML - MR; // ancho de contenido = 170mm
+    let y = 18;
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+    const fmtM = v => 'RD$' + (Math.round((parseFloat(v)||0)*100)/100)
+      .toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2});
+    const hr = (yy, color=[217,217,217], lw=0.3) => {
+      doc.setDrawColor(...color); doc.setLineWidth(lw);
+      doc.line(ML, yy, W-MR, yy);
+    };
+
+    // ── ESCUDO REPÚBLICA DOMINICANA (SVG→canvas vía texto) ───────────────────
+    // Usamos el logo de la empresa como representación institucional
+    try {
+      doc.addImage(LOGO_TEA,'PNG', W/2-12, y, 24, 16, undefined, 'FAST');
+      y += 19;
+    } catch(e) { y += 4; }
+
+    // ── ENCABEZADO INSTITUCIONAL ─────────────────────────────────────────────
+    doc.setFont('times','bold');
+    doc.setFontSize(15);
+    doc.setTextColor(0,0,0);
+    doc.text('República Dominicana', W/2, y, {align:'center'}); y += 7;
+
+    doc.setFont('times','normal');
+    doc.setFontSize(11);
+    doc.setTextColor(40,40,40);
+    doc.text('Ministerio de Trabajo', W/2, y, {align:'center'}); y += 6;
+
+    doc.setFont('helvetica','normal');
+    doc.setFontSize(9);
+    doc.setTextColor(80,80,80);
+    doc.text('Transporte Empresarial Amalfi, S.R.L.  ·  RNC: 131-07998-9', W/2, y, {align:'center'}); y += 7;
+
+    hr(y); y += 5;
+
+    // Título principal centrado
+    doc.setFont('helvetica','bold');
+    doc.setFontSize(12);
+    doc.setTextColor(0,0,0);
+    doc.text('Cálculo de Prestaciones Laborales y Derechos Adquiridos', W/2, y, {align:'center'});
+    y += 4;
+
+    hr(y); y += 8;
+
+    // ── BLOQUE DATOS DEL TRABAJADOR (2 columnas) ─────────────────────────────
+    const tipoLabel = r.tipo==='despido' ? 'Desahucio (sin causa)' :
+                      r.tipo==='despido_just' ? 'Despido justificado (Art.88)' :
+                      r.tipo==='renuncia' ? 'Renuncia voluntaria' : 'Mutuo acuerdo';
+
+    const camposL = [
+      ['Cédula de identidad:', r.cedula || '—'],
+      ['Nombre del trabajador:', r.nombre],
+      ['Lugar de trabajo:', 'Transporte Empresarial Amalfi, S.R.L.'],
+      ['Empleador:', 'Transporte Empresarial Amalfi, S.R.L.'],
+      ['Tipo de terminación:', tipoLabel],
+    ];
+    const camposR = [
+      ['Fecha de ingreso:', r.fechaIni],
+      ['Fecha de salida:', r.fechaFin],
+      ['Tiempo laborado:', r.tiempoStr],
+      ['Salario mensual:', fmtM(r.salMensual)],
+      ['Salario promedio diario:', 'RD$' + (Math.round((r.salDiario||0)*100)/100).toLocaleString('es-DO',{minimumFractionDigits:2,maximumFractionDigits:2})],
+    ];
+
+    const startY = y;
+    const colMid = ML + CW/2 + 4;
+
+    // Izquierda
+    let yL = startY;
+    camposL.forEach(([lbl, val]) => {
+      doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(90,90,90);
+      doc.text(lbl, ML, yL);
+      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(10,10,10);
+      doc.text(String(val||'—'), ML, yL+5);
+      yL += 13;
+    });
+
+    // Derecha
+    let yR = startY;
+    camposR.forEach(([lbl, val]) => {
+      doc.setFont('helvetica','normal'); doc.setFontSize(8); doc.setTextColor(90,90,90);
+      doc.text(lbl, colMid, yR);
+      doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(10,10,10);
+      doc.text(String(val||'—'), colMid, yR+5);
+      yR += 13;
+    });
+
+    y = Math.max(yL, yR) + 2;
+    hr(y); y += 8;
+
+    // ── TÍTULO SECCIÓN PRESTACIONES ──────────────────────────────────────────
+    hr(y, [0,0,0], 0.4); y += 4;
+    doc.setFont('helvetica','bold'); doc.setFontSize(11); doc.setTextColor(0,0,0);
+    doc.text('Prestaciones Laborales y Derechos Adquiridos', W/2, y, {align:'center'}); y += 4;
+    hr(y, [0,0,0], 0.4); y += 8;
+
+    // ── TABLA DE PRESTACIONES ────────────────────────────────────────────────
+    const tblHeaders = ['Concepto','Base Legal','Días','Monto'];
+    const colXX  = [ML, ML+66, ML+104, ML+124];
+    const colWW  = [64, 36, 18, 44];
+
+    // Header fila
+    doc.setFillColor(230,230,230); doc.rect(ML, y, CW, 7, 'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(0,0,0);
+    tblHeaders.forEach((h,i) => doc.text(h, colXX[i]+1, y+5));
+    y += 7;
+
+    // Filas de datos
+    const rows = [
+      ['Salario Preaviso', 'Art. 76 C.T.', r.pravisoDias > 0 ? String(r.pravisoDias) : 'N/A', r.preaviso],
+      ['Auxilio de Cesantía', 'Art. 80 C.T.', r.cesantiaDias > 0 ? String(r.cesantiaDias) : 'N/A', r.cesantia],
+      ['Vacaciones no disfrutadas', 'Art. 177 C.T.', r.vacDias > 0 ? String(r.vacDias) : 'N/A', r.vacaciones],
+    ];
+
+    rows.forEach((row, i) => {
+      if (i%2===0){doc.setFillColor(248,248,248);doc.rect(ML,y,CW,7,'F');}
+      doc.setDrawColor(217); doc.setLineWidth(0.2); doc.rect(ML,y,CW,7);
+      doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(20,20,20);
+      doc.text(row[0], colXX[0]+1, y+4.8);
+      doc.setTextColor(80,80,80);
+      doc.text(row[1], colXX[1]+1, y+4.8);
+      doc.text(row[2], colXX[2]+1, y+4.8);
+      doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
+      doc.text(fmtM(row[3]), colXX[3]+colWW[3]-1, y+4.8, {align:'right'});
+      y += 7;
+    });
+
+    // Subtotal
+    doc.setFillColor(220,228,242); doc.rect(ML,y,CW,7,'F');
+    doc.setFont('helvetica','bold'); doc.setFontSize(9); doc.setTextColor(0,0,0);
+    doc.text('Subtotal', colXX[0]+1, y+4.8);
+    doc.text(fmtM(r.subTotal), colXX[3]+colWW[3]-1, y+4.8, {align:'right'});
+    y += 7;
+
+    // Navidad
+    doc.setFillColor(248,248,248); doc.rect(ML,y,CW,7,'F');
+    doc.setFont('helvetica','normal'); doc.setFontSize(9); doc.setTextColor(20,20,20);
+    doc.text('Salario de Navidad', colXX[0]+1, y+4.8);
+    doc.setTextColor(80,80,80);
+    doc.text('Art. 219 C.T.', colXX[1]+1, y+4.8);
+    doc.text('—', colXX[2]+1, y+4.8);
+    doc.setFont('helvetica','bold'); doc.setTextColor(20,20,20);
+    doc.text(fmtM(r.navidad), colXX[3]+colWW[3]-1, y+4.8, {align:'right'});
+    y += 10;
+
+    // ── TOTAL A RECIBIR ──────────────────────────────────────────────────────
+    hr(y, [100,100,100], 0.5); y += 5;
+
+    doc.setFont('helvetica','bold'); doc.setFontSize(15); doc.setTextColor(0,0,0);
+    doc.text('TOTAL A RECIBIR:', ML, y+1);
+    doc.setFontSize(16);
+    doc.text(fmtM(r.total), W-MR, y+1, {align:'right'});
+    y += 8;
+
+    hr(y, [100,100,100], 0.5); y += 10;
+
+    // ── NOTA LEGAL ───────────────────────────────────────────────────────────
+    doc.setFont('helvetica','normal'); doc.setFontSize(7.5); doc.setTextColor(85,85,85);
+    const nota = 'NOTA: Estos cálculos han sido realizados en base a las informaciones suministradas por la parte interesada. '+
+      'Por tanto, los mismos no se imponen a la parte contraria ni al juez de trabajo y no aplican en los casos de trabajadoras '+
+      'protegidas por la maternidad, trabajadores protegidos por el fuero sindical, ni trabajadores con VIH.';
+    const notaLines = doc.splitTextToSize(nota, CW);
+    doc.text(notaLines, ML, y); y += notaLines.length * 4 + 10;
+
+    // ── FIRMAS ───────────────────────────────────────────────────────────────
+    const sigY = y + 12;
+    const thirds = CW/3;
+
+    [
+      ['Inspector de Trabajo','Ministerio de Trabajo'],
+      ['Representante RR.HH.','Transporte Empresarial Amalfi'],
+      ['Firma del Trabajador','Descargo recibido: □ SÍ  □ NO'],
+    ].forEach(([titulo, subtitulo], i) => {
+      const sx = ML + i*thirds + (i===1?2:i===2?4:0);
+      const sw = thirds - 6;
+      doc.setDrawColor(100,100,100); doc.setLineWidth(0.4);
+      doc.line(sx, sigY, sx+sw, sigY);
+      doc.setFont('helvetica','bold'); doc.setFontSize(8); doc.setTextColor(0,0,0);
+      doc.text(titulo, sx, sigY+4);
+      doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(85,85,85);
+      doc.text(subtitulo, sx, sigY+8);
+    });
+
+    // Fecha en pie
+    const pH = doc.internal.pageSize.getHeight();
+    doc.setFont('helvetica','normal'); doc.setFontSize(7); doc.setTextColor(140,140,140);
+    doc.text(`Generado: ${r.fecha}  ·  Sistema de Nómina v2.0  ·  RNC: 131-07998-9`, W/2, pH-8, {align:'center'});
+
+    // Guardar
+    const slug = (r.nombre||'').replace(/\s+/g,'_').toUpperCase();
+    doc.save(`Prestaciones_${slug}_${(r.fechaFin||'').replace(/\//g,'-')}.pdf`);
   }
 
   const fmtDO = v => 'RD$' + (parseFloat(v)||0).toLocaleString('es-DO',{minimumFractionDigits:2});
@@ -3508,15 +3844,51 @@ function Prestaciones({ employees }) {
         <div style={{fontWeight:700,color:'#003366',marginBottom:14}}>👤 Datos del Empleado</div>
 
         <div style={{marginBottom:12}}>
-          <label style={{fontSize:12,fontWeight:700,color:'#5A7090',display:'block',marginBottom:4}}>Seleccionar empleado (opcional)</label>
+          <label style={{fontSize:12,fontWeight:700,color:'#5A7090',display:'block',marginBottom:4}}>Seleccionar empleado</label>
           <select value={empId} onChange={e=>onSelectEmp(e.target.value)}
             style={{width:'100%',padding:'9px 12px',border:'1.5px solid #D0DCF0',borderRadius:8,fontSize:14}}>
-            <option value="">— Ingreso manual —</option>
-            {[...employees].sort((a,b)=>a.name.localeCompare(b.name)).map(e=>(
-              <option key={e.id} value={String(e.id)}>{e.name}</option>
+            <option value="">— Seleccionar empleado —</option>
+            {[...employees].filter(e=>!e.exitDate).sort((a,b)=>a.name.localeCompare(b.name)).map(e=>(
+              <option key={e.id} value={String(e.id)}>{e.name} — {e.position}</option>
             ))}
           </select>
         </div>
+        {/* Panel de info auto-llenada */}
+        {empSel && (
+          <div style={{background:'linear-gradient(135deg,#EFF6FF,#DBEAFE)',border:'1.5px solid #93C5FD',
+            borderRadius:12,padding:'14px 16px',marginBottom:4}}>
+            <div style={{fontWeight:700,color:'#1E40AF',fontSize:13,marginBottom:10}}>
+              📋 Datos cargados automáticamente de Firebase
+            </div>
+            <div style={{display:'grid',gridTemplateColumns:'1fr 1fr',gap:'6px 18px',fontSize:13}}>
+              {[
+                ['👤 Empleado', empSel.name],
+                ['🪪 Cédula', empSel.cedula],
+                ['💼 Cargo', empSel.position],
+                ['💰 Salario Mensual', fmt(empSel.salary)],
+                ['📅 Fecha de Ingreso', fmtDate(empSel.hireDate)],
+                ['⏳ Tiempo Laborado', (() => {
+                  const ini = new Date(empSel.hireDate+'T12:00:00');
+                  const fin = new Date(fechaFin+'T12:00:00');
+                  const diffMs = fin - ini;
+                  if (diffMs <= 0) return '—';
+                  const yrs = Math.floor(diffMs / (365.25*86400000));
+                  const mths = Math.floor((diffMs / (365.25*86400000) - yrs) * 12);
+                  return [yrs>0?yrs+' año'+(yrs>1?'s':''):'', mths>0?mths+' mes'+(mths>1?'es':''):''].filter(Boolean).join(', ') || 'Menos de 1 mes';
+                })()],
+                ['🏖️ Días Vacac. (Ley)', vacationDays(empSel.hireDate) + ' días'],
+                ['🏥 ARS', (empSel.ars||'—').replace('SEGURO NACIONAL DE SALUD (SENASA) - REGIMEN CONTRIBUTIVO','SENASA')],
+                ['🔢 NSS', empSel.nss||'—'],
+                ['🏦 Banco', empSel.bank ? `${empSel.bank} · ${empSel.account}` : '—'],
+              ].map(([l,v])=>(
+                <div key={l} style={{display:'flex',gap:6}}>
+                  <span style={{color:'#3B82F6',fontWeight:600,minWidth:145,flexShrink:0,fontSize:12}}>{l}:</span>
+                  <span style={{fontWeight:700,color:'#1E3A8A',fontSize:12}}>{v}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {[['Nombre Completo *', nombre, setNombre, 'text', 'Ej: Juan Pérez García'],
           ['Cédula de Identidad', cedula, setCedula, 'text', '000-0000000-0'],
@@ -3604,7 +3976,7 @@ function Prestaciones({ employees }) {
   const r = resultado;
   return (
     <div style={{maxWidth:680,margin:'0 auto',padding:24}}>
-      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20}}>
+      <div style={{display:'flex',alignItems:'center',gap:12,marginBottom:20,flexWrap:'wrap'}}>
         <button onClick={()=>setStep(1)}
           style={{background:'#F0F4FA',border:'none',borderRadius:8,padding:'8px 14px',cursor:'pointer',fontWeight:700,color:'#5A7090'}}>
           ← Nuevo Cálculo
@@ -3612,8 +3984,60 @@ function Prestaciones({ employees }) {
         <button onClick={descargarPDF}
           style={{background:'#003366',color:'white',border:'none',borderRadius:8,
             padding:'8px 18px',cursor:'pointer',fontWeight:700,fontSize:13}}>
-          ⬇️ Descargar PDF
+          ⬇️ Descargar PDF Prestaciones
         </button>
+        {resultado && (
+          <button onClick={() => {
+            const emp = employees.find(e => String(e.id) === resultado.empId);
+            generateFichaSalidaPDF(resultado, emp);
+          }}
+          style={{background:'#7C3AED',color:'white',border:'none',borderRadius:8,
+            padding:'8px 18px',cursor:'pointer',fontWeight:700,fontSize:13,
+            display:'flex',alignItems:'center',gap:6}}>
+            📋 Ficha Salida TSS (RRHH)
+          </button>
+        )}
+        {/* Botón para registrar salida definitiva */}
+        {resultado && resultado.empId && (() => {
+          const emp = employees.find(e => String(e.id) === resultado.empId);
+          if (!emp || emp.exitDate) return (
+            <span style={{background:'#FEF2F2',color:'#DC2626',border:'1px solid #FECACA',
+              borderRadius:8,padding:'8px 16px',fontWeight:700,fontSize:13}}>
+              ✅ Empleado ya registrado como retirado
+            </span>
+          );
+          return (
+            <button onClick={async () => {
+              if (!window.confirm(
+                `¿Registrar la salida definitiva de ${resultado.nombre}?
+
+` +
+                `Fecha de salida: ${resultado.fechaFin}
+` +
+                `Motivo: ${resultado.tipo === 'despido' ? 'Desahucio' : resultado.tipo === 'renuncia' ? 'Renuncia' : resultado.tipo === 'despido_just' ? 'Despido Justificado' : 'Mutuo Acuerdo'}
+
+` +
+                `⚠️ Este empleado dejará de aparecer en la nómina.`
+              )) return;
+              const updated = {
+                ...emp,
+                exitDate: resultado.fechaFinISO || new Date().toISOString().substring(0,10),
+                exitReason: resultado.tipo,
+                exitTotal: resultado.total,
+                exitNotes: `Prestaciones calculadas y pagadas. Total: RD$${resultado.total.toLocaleString('es-DO',{minimumFractionDigits:2})}`
+              };
+              if (saveEmployee) await saveEmployee(updated);
+              if (setEmployees) setEmployees(prev => prev.map(e => String(e.id) === resultado.empId ? updated : e));
+              generateFichaSalidaPDF({...resultado, fechaFinISO: resultado.fechaFinISO||new Date().toISOString().substring(0,10)}, emp);
+              alert(`\u2705 ${resultado.nombre} registrado como retirado.\n\n\ud83d\udcc4 La Ficha de Salida TSS (RRHH) se descarg\u00f3 autom\u00e1ticamente.`);
+            }}
+            style={{background:'#DC2626',color:'white',border:'none',borderRadius:8,
+              padding:'8px 18px',cursor:'pointer',fontWeight:700,fontSize:13,
+              display:'flex',alignItems:'center',gap:6}}>
+              🚪 Registrar Salida Definitiva
+            </button>
+          );
+        })()}
       </div>
 
       {/* Documento estilo Ministerio de Trabajo */}
